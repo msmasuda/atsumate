@@ -45,7 +45,7 @@ graph TD
     User([幹事 / 参加者])
 
     subgraph "Web / Mobile Client"
-        WebClient["Webフロント (Next.js 14/15)"]
+        WebClient["Webフロント (Next.js 16)"]
         FlutterClient["モバイルアプリ (Flutter)"]
     end
 
@@ -90,7 +90,7 @@ graph TD
 ### 3.1 技術選定一覧
 | レイヤー | 技術選定 | 役割・選定理由 |
 |:---|:---|:---|
-| **Webフロントエンド** | Next.js 14/15 (App Router), TypeScript | 高速SSR、直感的なUI、Vercelデプロイ |
+| **Webフロントエンド** | Next.js 16 (App Router), TypeScript | 高速SSR、直感的なUI、Dockerによる自己ホスト |
 | **モバイルアプリ (将来)** | Flutter (Dart) | iOS / Android の美麗なクロスプラットフォーム体験 |
 | **AIエージェント基盤** | **`langgraph_sample`** (FastAPI + LangGraph) | **自前構築済みの自律ReActエージェント & Vision API & WebSearch** |
 | **LLM / Vision** | Ollama (ローカルLLM / Vision) | プライバシー重視のローカル推論、高いコスト効率 |

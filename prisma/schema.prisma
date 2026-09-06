@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  oidcSubject String   @unique
+  name        String?
+  email       String?  @unique
+  events      Event[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id              String      @id @default(cuid())
+  title           String
+  publicSlug      String      @unique
+  inviteTokenHash String      @unique
+  description     String?     @db.Text
+  timezone        String      @default("Asia/Tokyo")
+  currency        String      @default("JPY")
+  status          EventStatus @default(PLANNING)
+  eventDate       DateTime?
+  responseDueAt   DateTime?
+
+  organizerId String
+  organizer   User   @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+
+  dateOptions   EventDateOption[]
+  participants  Participant[]
+  expenses      Expense[]
+  settlementRuns SettlementRun[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizerId, status])
+}
+
+enum EventStatus {
+  PLANNING
+  CONFIRMED
+  IN_PROGRESS
+  SETTLING
+  COMPLETED
+  CANCELLED
+}
+
+model EventDateOption {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startAt   DateTime
+  endAt     DateTime?
+  isDecided Boolean  @default(false)
+  votes     DateVote[]
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, startAt])
+  @@index([eventId, isDecided])
+}
+
+model Participant {
+  id                 String           @id @default(cuid())
+  eventId            String
+  event               Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name                String
+  email               String?
+  guestTokenHash      String           @unique
+  attendance          AttendanceStatus @default(UNDECIDED)
+  isKeyPerson         Boolean          @default(false)
+  delayMinutes        Int              @default(0)
+  dietaryRequirements String?          @db.Text
+  splitWeightBasis    Int              @default(1000)
+  revokedAt           DateTime?
+
+  dateVotes         DateVote[]
+  expensesSubmitted Expense[]         @relation("ExpenseSubmitter")
+  expensesPaid      Expense[]         @relation("ExpensePayer")
+  expenseSplits     ExpenseSplit[]
+  settlementsToPay Settlement[]        @relation("SettlementPayer")
+  settlementsToReceive Settlement[]    @relation("SettlementPayee")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId, attendance])
+}
+
+enum AttendanceStatus {
+  ATTENDING
+  UNDECIDED
+  DECLINED
+}
+
+model DateVote {
+  id            String          @id @default(cuid())
+  optionId      String
+  option        EventDateOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   Participant     @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  status        VoteStatus
+  conditionNote String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([optionId, participantId])
+  @@index([participantId])
+}
+
+enum VoteStatus {
+  ATTENDING
+  CONDITIONAL
+  DECLINED
+}
+
+model Expense {
+  id          String         @id @default(cuid())
+  eventId     String
+  event       Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  title       String
+  amount      Int
+  status      ExpenseStatus  @default(SUBMITTED)
+  submittedById String
+  submittedBy Participant    @relation("ExpenseSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  paidById    String
+  paidBy      Participant    @relation("ExpensePayer", fields: [paidById], references: [id], onDelete: Restrict)
+  approvedById String?
+  approvedAt  DateTime?
+  rejectedAt  DateTime?
+  rejectionReason String?
+  splits      ExpenseSplit[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([eventId, status])
+}
+
+enum ExpenseStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model ExpenseSplit {
+  id              String      @id @default(cuid())
+  expenseId       String
+  expense         Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  participantId   String
+  participant     Participant @relation(fields: [participantId], references: [id], onDelete: Restrict)
+  allocatedAmount Int
+
+  @@unique([expenseId, participantId])
+  @@index([participantId])
+}
+
+model SettlementRun {
+  id                String              @id @default(cuid())
+  eventId           String
+  event             Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  version           Int
+  status            SettlementRunStatus @default(DRAFT)
+  calculationPolicy Json
+  totalExpense      Int
+  finalizedAt       DateTime?
+  supersededAt      DateTime?
+  settlements       Settlement[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@unique([eventId, version])
+  @@index([eventId, status])
+}
+
+enum SettlementRunStatus {
+  DRAFT
+  FINALIZED
+  SUPERSEDED
+}
+
+model Settlement {
+  id              String           @id @default(cuid())
+  settlementRunId String
+  settlementRun   SettlementRun    @relation(fields: [settlementRunId], references: [id], onDelete: Restrict)
+  fromId          String
+  from            Participant      @relation("SettlementPayer", fields: [fromId], references: [id], onDelete: Restrict)
+  toId            String
+  to              Participant      @relation("SettlementPayee", fields: [toId], references: [id], onDelete: Restrict)
+  amount          Int
+  status          SettlementStatus @default(UNPAID)
+  reportedPaidAt  DateTime?
+  confirmedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([settlementRunId, status])
+  @@index([fromId])
+  @@index([toId])
+}
+
+enum SettlementStatus {
+  UNPAID
+  REPORTED_PAID
+  CONFIRMED
+}

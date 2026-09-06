@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: atsumate-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-atsumate}
+      POSTGRES_USER: ${POSTGRES_USER:-atsumate}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORDを設定してください}
+      TZ: Asia/Tokyo
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - atsumate_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  atsumate_postgres_data:
+    name: atsumate_postgres_data
