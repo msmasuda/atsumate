@@ -1,16 +1,28 @@
 "use client";
 
-import { LoaderCircle, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, LoaderCircle, UserPlus } from "lucide-react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-export function GuestJoinForm({ inviteToken }: { inviteToken: string }) {
+type ParticipantSummary = { id: string; name: string; attendance: string };
+
+type GuestJoinFormProps = {
+  inviteToken: string;
+  initialParticipant: ParticipantSummary | null;
+};
+
+export function GuestJoinForm({ inviteToken, initialParticipant }: GuestJoinFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [participant, setParticipant] = useState(initialParticipant);
+  const submittingRef = useRef(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
+
+    submittingRef.current = true;
     setIsSubmitting(true);
     setMessage(null);
     const data = new FormData(event.currentTarget);
@@ -20,13 +32,31 @@ export function GuestJoinForm({ inviteToken }: { inviteToken: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: data.get("name"), email: data.get("email") || undefined }),
       });
-      const body = (await response.json()) as { data?: { name: string }; error?: string };
-      setMessage(response.ok ? `${body.data?.name ?? "参加者"}さんとして登録しました。` : body.error ?? "登録できませんでした。");
+      const body = (await response.json()) as { data?: ParticipantSummary; error?: string };
+      if (!response.ok || !body.data) {
+        setMessage(body.error ?? "登録できませんでした。");
+        return;
+      }
+      setParticipant(body.data);
     } catch {
       setMessage("通信に失敗しました。時間をおいてもう一度お試しください。");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
+  }
+
+  if (participant) {
+    return (
+      <div className="mt-7 rounded-2xl border border-emerald-200 bg-emerald-50 p-6" role="status" aria-live="polite">
+        <CheckCircle2 className="size-8 text-emerald-600" aria-hidden="true" />
+        <h2 className="mt-3 text-xl font-black">参加登録が完了しました</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          {participant.name}さんとして登録しました。この端末の参加情報を保存しています。
+        </p>
+        <p className="mt-3 text-sm font-semibold text-emerald-800">この画面は閉じて大丈夫です。</p>
+      </div>
+    );
   }
 
   return (
@@ -42,7 +72,7 @@ export function GuestJoinForm({ inviteToken }: { inviteToken: string }) {
       {message ? <p className="rounded-xl bg-slate-100 p-3 text-sm font-semibold" role="status">{message}</p> : null}
       <Button type="submit" disabled={isSubmitting} className="w-full">
         {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
-        {isSubmitting ? "登録しています…" : "参加登録へ進む"}
+        {isSubmitting ? "登録しています…" : "参加登録する"}
       </Button>
     </form>
   );

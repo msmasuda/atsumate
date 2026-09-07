@@ -1,4 +1,5 @@
 import { CalendarDays, Users } from "lucide-react";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { GuestJoinForm } from "@/components/guest-join-form";
@@ -13,9 +14,22 @@ export default async function InvitePage({ params }: PageProps) {
   const { token } = await params;
   const event = await getPrisma().event.findUnique({
     where: { inviteTokenHash: hashGuestToken(token) },
-    select: { title: true, description: true, status: true, _count: { select: { participants: true } } },
+    select: { id: true, title: true, description: true, status: true, _count: { select: { participants: true } } },
   });
   if (!event || event.status === "CANCELLED" || event.status === "COMPLETED") notFound();
+
+  const cookieStore = await cookies();
+  const guestToken = cookieStore.get(`atsumate_guest_${event.id}`)?.value;
+  const participant = guestToken
+    ? await getPrisma().participant.findFirst({
+        where: {
+          eventId: event.id,
+          guestTokenHash: hashGuestToken(guestToken),
+          revokedAt: null,
+        },
+        select: { id: true, name: true, attendance: true },
+      })
+    : null;
 
   return (
     <main className="grid min-h-screen place-items-center bg-slate-50 px-4 py-10">
@@ -34,7 +48,7 @@ export default async function InvitePage({ params }: PageProps) {
         <div className="my-7 border-t border-slate-200" />
         <h2 className="text-lg font-black">あなたの情報を入力</h2>
         <p className="mt-1 text-sm leading-6 text-slate-500">ログインは不要です。この端末から後で回答を変更できます。</p>
-        <GuestJoinForm inviteToken={token} />
+        <GuestJoinForm inviteToken={token} initialParticipant={participant} />
       </div>
     </main>
   );

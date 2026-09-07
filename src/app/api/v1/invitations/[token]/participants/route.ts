@@ -19,12 +19,30 @@ export async function POST(request: Request, context: RouteContext) {
   if (!parsed.success) return Response.json({ error: "名前を入力してください。" }, { status: 400 });
 
   const db = getPrisma();
+  const participantSelect = { id: true, name: true, attendance: true } as const;
   const event = await db.event.findUnique({
     where: { inviteTokenHash: hashGuestToken(inviteToken) },
     select: { id: true, status: true },
   });
   if (!event || event.status === "CANCELLED" || event.status === "COMPLETED") {
     return Response.json({ error: "この招待は利用できません。" }, { status: 404 });
+  }
+
+  const cookieStore = await cookies();
+  const cookieName = `atsumate_guest_${event.id}`;
+  const existingGuestToken = cookieStore.get(cookieName)?.value;
+  if (existingGuestToken) {
+    const existingParticipant = await db.participant.findFirst({
+      where: {
+        eventId: event.id,
+        guestTokenHash: hashGuestToken(existingGuestToken),
+        revokedAt: null,
+      },
+      select: participantSelect,
+    });
+    if (existingParticipant) {
+      return Response.json({ data: existingParticipant });
+    }
   }
 
   const guestToken = createOpaqueToken();
@@ -35,11 +53,10 @@ export async function POST(request: Request, context: RouteContext) {
       email: parsed.data.email,
       guestTokenHash: hashGuestToken(guestToken),
     },
-    select: { id: true, name: true, attendance: true },
+    select: participantSelect,
   });
 
-  const cookieStore = await cookies();
-  cookieStore.set(`atsumate_guest_${event.id}`, guestToken, {
+  cookieStore.set(cookieName, guestToken, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

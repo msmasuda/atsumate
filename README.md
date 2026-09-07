@@ -10,8 +10,8 @@ MVPの最初の縦切りを実装しています。
 - Keycloak/OIDCによる幹事ログイン
 - ログイン中のユーザー名表示とログアウト
 - イベント作成REST API（`/api/v1/events`）
-- 表示用slugと分離した、ハッシュ保存の招待トークン
-- 招待URLからのゲスト自己登録とHttpOnly本人トークン
+- 表示用slugと分離した、ハッシュ保存の招待トークンと招待URLコピー
+- 招待URLからのゲスト自己登録、完了表示、同一端末の重複登録防止、HttpOnly本人トークン
 - 日程候補・回答、立替承認、バージョン付き精算に対応するPrismaスキーマ
 - 円単位の整数演算による送金集約ロジックと単体テスト
 - Dockgeへ登録できるatsumate専用PostgreSQL Compose
@@ -63,10 +63,18 @@ cp .env.example .env
 
 - Root URL: `http://localhost:3000`
 - Home URL: `http://localhost:3000`
-- Valid redirect URIs: `http://localhost:3000/api/auth/callback/keycloak`
-- Valid post logout redirect URIs: `http://localhost:3000/*`
-- Web origins: `http://localhost:3000`
+- Valid redirect URIs:
+  - `http://localhost:3000/api/auth/callback/keycloak`
+  - LAN内からアクセスする場合は `http://192.168.100.56:3000/api/auth/callback/keycloak` も追加
+- Valid post logout redirect URIs:
+  - `http://localhost:3000/*`
+  - LAN内からアクセスする場合は `http://192.168.100.56:3000/*` も追加
+- Web origins:
+  - `http://localhost:3000`
+  - LAN内からアクセスする場合は `http://192.168.100.56:3000` も追加
 - Admin URL: 空欄
+
+LAN内から `http://192.168.100.56:3000` で利用する場合は、Root URLとHome URLもそのURLへ変更します。Keycloakとアプリで同じURLを正規URLとして設定してください。
 
 `Settings`に`Require PKCE`が表示される場合は`On`にします。`PKCE method`の選択欄が表示される管理画面では`S256`を選択します。atsumateのNextAuthはS256でPKCEを送信します。`Credentials`タブのClient secretを、アプリの`.env`にある`KEYCLOAK_CLIENT_SECRET`へ設定します。
 
@@ -88,7 +96,16 @@ npm install
 cp .env.example .env
 ```
 
-`.env`のDBパスワード、Keycloakクライアントシークレット、`NEXTAUTH_SECRET`、`GUEST_TOKEN_PEPPER`を実際の値へ変更します。二つのシークレットは別々の安全なランダム値を使用してください。DockgeへWebアプリも配置する場合、`NEXTAUTH_URL`はブラウザからアクセスする実際のURLへ変更します。
+`.env`のDBパスワード、Keycloakクライアントシークレット、`NEXTAUTH_SECRET`、`GUEST_TOKEN_PEPPER`を実際の値へ変更します。二つのシークレットは別々の安全なランダム値を使用してください。
+
+`localhost`以外から開発サーバーを開く場合は、ブラウザから実際にアクセスするURLとホストを設定します。たとえば `192.168.100.56` から開く場合は次のようにします。変更後は開発サーバーを再起動してください。
+
+```dotenv
+NEXTAUTH_URL=http://192.168.100.56:3000
+ALLOWED_DEV_ORIGINS=192.168.100.56
+```
+
+`ALLOWED_DEV_ORIGINS`はカンマ区切りで複数指定できます。未設定の場合、Next.js開発サーバーは`localhost`以外のオリジンから届く開発用リソース要求を拒否します。DockgeへWebアプリを配置する場合も、`NEXTAUTH_URL`はブラウザからアクセスする実際のURLへ変更します。
 
 ### 4. DBを初期化して起動
 
