@@ -52,8 +52,14 @@ graph TD
     subgraph "atsumate Web Backend (Next.js / Vercel)"
         NextAPI["BFF / API Routes (/api/v1)"]
         Prisma["Prisma ORM"]
-        AppDB[(PostgreSQL / atsumate DB)]
         EmailService["Resend / React Email"]
+    end
+
+    subgraph "Managed Supabase (Tokyo Region)"
+        SupabaseAuth["Supabase Auth"]
+        AppDB[(Supabase PostgreSQL / atsumate DB)]
+        Storage["Supabase Storage"]
+        Realtime["Supabase Realtime"]
     end
 
     subgraph "AI Agent Server (langgraph_sample / FastAPI:8000)"
@@ -69,8 +75,13 @@ graph TD
     User <--> FlutterClient
     WebClient <--> NextAPI
     FlutterClient <-->|REST API (Bearer Token)| NextAPI
+    WebClient <-->|Cookie Session| SupabaseAuth
+    FlutterClient <-->|JWT Session| SupabaseAuth
+    NextAPI -->|JWT Verification| SupabaseAuth
     NextAPI <--> Prisma
     Prisma <--> AppDB
+    NextAPI <--> Storage
+    NextAPI <--> Realtime
     NextAPI --> EmailService
 
     %% Agent連携
@@ -90,19 +101,22 @@ graph TD
 ### 3.1 技術選定一覧
 | レイヤー | 技術選定 | 役割・選定理由 |
 |:---|:---|:---|
-| **Webフロントエンド** | Next.js 16 (App Router), TypeScript | 高速SSR、直感的なUI、Dockerによる自己ホスト |
+| **Webフロントエンド** | Next.js 16 (App Router), TypeScript / Vercel | 高速SSR、直感的なUI、Vercelによるマネージド運用 |
 | **モバイルアプリ (将来)** | Flutter (Dart) | iOS / Android の美麗なクロスプラットフォーム体験 |
 | **AIエージェント基盤** | **`langgraph_sample`** (FastAPI + LangGraph) | **自前構築済みの自律ReActエージェント & Vision API & WebSearch** |
 | **LLM / Vision** | Ollama (ローカルLLM / Vision) | プライバシー重視のローカル推論、高いコスト効率 |
-| **Webバックエンド / DB** | Next.js Route Handlers + Prisma ORM + PostgreSQL | イベント出欠・タスク・会計トランザクション管理 |
+| **Webバックエンド / DB** | Next.js Route Handlers + Prisma ORM + マネージドSupabase PostgreSQL | イベント出欠・タスク・会計トランザクション管理 |
+| **認証** | Supabase Auth | WebとFlutterで共通のユーザーとJWTを利用し、atsumate内にログインUIを実装 |
+| **ファイル保存** | Supabase Storage | 写真・予約画像等を署名付きURLとRLSで保護 |
 | **メール送信基盤** | **Resend + React Email** | Vercel公式推奨。Reactコンポーネントで美しいHTMLメール配信 |
 | **UIライブラリ** | Tailwind CSS, shadcn/ui, Lucide Icons | モダンでレスポンシブなスマホファーストUI |
 
 ### 3.2 Flutter（モバイル）連携に向けた REST API & 認証設計
 - **Route Handlers による REST API 提供 (`/app/api/v1/...`)**:
   - Web画面だけでなく、Flutter（Dart の `http` / `dio`）から直接呼べる標準的な JSON REST API を提供。
-- **Cookie と Bearer Token のハイブリッド認証**:
-  - Webは Cookie セッション、Flutter モバイルは `Authorization: Bearer <token>` を自動判別して認証。
+- **Supabase Authによる共通認証**:
+  - WebはSupabaseのCookieセッション、FlutterはSupabaseセッションの `Authorization: Bearer <token>` を使用する。
+  - Route HandlersはSupabase JWTを検証し、同じSupabaseユーザーIDで幹事を識別する。
 - **BFF（Backend For Frontend）アーキテクチャ**:
   - コアの割り勘計算やタスク管理のロジックを `services/` に集約し、Web（Server Actions）と Flutter（Route Handlers）で 100% 同一ロジックを共有。
 
@@ -523,8 +537,9 @@ export function calculateMinimalSettlements(balances: { participantId: string; n
 ## 8. 今後の開発ロードマップ
 
 1. **Step 1: Next.js + Prisma 基盤 & REST API 構築** (PostgreSQL、Prisma スキーマ適用、`/api/v1` エンドポイント)
-2. **Step 2: 日程調整 & 出欠・ゲスト参加モデル実装** (AI候補日生成、キーパーソン判定、投票UI)
-3. **Step 3: 自前基盤 `langgraph_sample` 連携** (WebSearchによる店選び、Vision API レシート・予約スクショ解析、SSE対話)
-4. **Step 4: コミュニケーションボード & 写真共有** (ピン留め、AIコンシェルジュ自動応答、アルバム機能)
-5. **Step 5: 割り勘・最小送金エンジン & メール配信 (Resend)** (Debt Simplification、キャンセル料按分、個別精算メール)
-6. **Step 6: Flutter モバイルアプリ開発** (Next.js REST API 接続、Push通知 FCM 実装)
+2. **Step 2: Vercel + マネージドSupabaseへ基盤移行** (DB移行、Supabase Auth、Googleログイン、メールOTP／マジックリンク、JWT検証)
+3. **Step 3: 日程調整 & 出欠・ゲスト参加モデル実装** (AI候補日生成、キーパーソン判定、投票UI)
+4. **Step 4: 自前基盤 `langgraph_sample` 連携** (WebSearchによる店選び、Vision API レシート・予約スクショ解析、SSE対話)
+5. **Step 5: コミュニケーションボード & 写真共有** (ピン留め、AIコンシェルジュ自動応答、Supabase Storageによるアルバム機能)
+6. **Step 6: 割り勘・最小送金エンジン & メール配信 (Resend)** (Debt Simplification、キャンセル料按分、個別精算メール)
+7. **Step 7: Flutter モバイルアプリ開発** (Supabase Auth、Next.js REST API接続、Push通知FCM実装)

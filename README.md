@@ -1,6 +1,6 @@
 # atsumate（集まて）
 
-集まりごとの企画、日程調整、参加確認、立替管理、割り勘、精算までを一つの流れで管理するWebアプリです。幹事だけがKeycloakでログインし、参加者は招待URLからログインせずに参加できます。
+集まりごとの企画、日程調整、参加確認、立替管理、割り勘、精算までを一つの流れで管理するWebアプリです。現行実装では幹事だけがKeycloakでログインし、参加者は招待URLからログインせずに参加できます。認証とデータ基盤はマネージドSupabaseへ移行予定です。
 
 ## 現在の実装範囲
 
@@ -20,7 +20,24 @@ MVPの最初の縦切りを実装しています。
 
 ホーム画面はログイン中の幹事本人のデータだけをサーバー側で取得し、進行中・終了済みのイベント、回答期限、未承認の立替、参加者数、日程候補数を表示します。日程候補の登録・回答UIは次の実装単位です。AI店舗検索、Vision、掲示板、写真、通知は後続フェーズ、Flutterは別プロジェクトです。
 
-## 技術構成
+## 確定している移行方針
+
+本番環境は、WebとAPIをVercel、DB・認証・ストレージをマネージドSupabaseで運用します。現在のKeycloak、Auth.js（NextAuth）、独立PostgreSQLは移行が完了するまで現行開発環境として維持し、動作確認後に撤去します。
+
+- Next.js WebとRoute HandlersはVercelへデプロイする
+- PostgreSQL、Auth、StorageはマネージドSupabaseを利用する
+- Supabaseプロジェクトは東京リージョンを選択し、開発環境と本番環境を分離する
+- Prisma ORMは継続し、業務データへのアクセスとマイグレーションに使用する
+- Webと将来のFlutterアプリは同じSupabase Authのユーザーを利用する
+- 幹事のログイン方法はGoogleログインとメールOTP／マジックリンクを基本とする
+- ログイン画面と認証エラーはatsumate内のUIとして実装する
+- WebとFlutterの業務処理は `/api/v1` に集約し、APIがSupabase JWTを検証する
+- 参加者の招待URLとログイン不要のゲストトークン方式は維持する
+- 写真などのファイルはSupabase Storageへ保存する
+
+採用理由、境界、移行手順は[アーキテクチャ決定記録](./docs/ADR-001_MANAGED_SUPABASE.md)を参照してください。
+
+## 現在の技術構成
 
 - Node.js 24以上
 - Next.js 16 / React 19 / TypeScript
@@ -30,6 +47,8 @@ MVPの最初の縦切りを実装しています。
 - Vitest
 
 ## セットアップ
+
+以下はSupabase移行前の現行開発環境のセットアップです。
 
 ### 1. PostgreSQLを起動
 
@@ -152,6 +171,7 @@ APIはFlutter等の別クライアントからも利用できるよう、`/api/v
 - [全体仕様書・企画設計書](./docs/SPECIFICATION.md)
 - [AIエージェント詳細設計書](./docs/AI_AGENT_DESIGN.md)
 - [懸念事項・リスク分析](./docs/CONSIDERATIONS_AND_RISKS.md)
+- [ADR-001: Vercel＋マネージドSupabaseへの移行](./docs/ADR-001_MANAGED_SUPABASE.md)
 
 ## 開発フェーズ
 
