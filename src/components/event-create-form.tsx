@@ -4,13 +4,16 @@ import { CalendarPlus, CheckCircle2, Copy, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { copyText } from "@/lib/client/copy-text";
 
 type CreateResult = { data: { id: string; title: string }; inviteUrl: string };
+type CopyStatus = "idle" | "copied" | "error";
 
 export function EventCreateForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateResult | null>(null);
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,6 +43,15 @@ export function EventCreateForm() {
     }
   }
 
+  async function handleCopy(inviteUrl: string) {
+    try {
+      await copyText(inviteUrl);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+  }
+
   if (result) {
     const absoluteInviteUrl = `${window.location.origin}${result.inviteUrl}`;
     return (
@@ -49,10 +61,16 @@ export function EventCreateForm() {
         <p className="mt-2 text-sm leading-6 text-slate-600">このURLを参加者へ共有してください。</p>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <input className="min-h-11 min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-3 text-sm" value={absoluteInviteUrl} readOnly aria-label="参加者用招待URL" />
-          <Button type="button" variant="secondary" onClick={() => navigator.clipboard.writeText(absoluteInviteUrl)}>
-            <Copy className="size-4" aria-hidden="true" /> URLをコピー
+          <Button type="button" variant="secondary" onClick={() => void handleCopy(absoluteInviteUrl)}>
+            <Copy className="size-4" aria-hidden="true" />
+            {copyStatus === "copied" ? "コピーしました" : "URLをコピー"}
           </Button>
         </div>
+        {copyStatus === "error" ? (
+          <p className="mt-2 text-sm font-semibold text-red-700" role="alert">
+            コピーできませんでした。URLを選択してコピーしてください。
+          </p>
+        ) : null}
       </div>
     );
   }
