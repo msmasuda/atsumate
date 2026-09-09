@@ -1,9 +1,9 @@
 import { CalendarDays, CircleDollarSign, LayoutDashboard, LogIn, Plus, Users } from "lucide-react";
-import type { Session } from "next-auth";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/account-menu";
 import { buttonVariants } from "@/components/ui/button";
+import type { AuthUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -13,7 +13,7 @@ const navigation = [
   { label: "会計", icon: CircleDollarSign, current: false },
 ];
 
-export function AppShell({ children, session }: { children: React.ReactNode; session: Session | null }) {
+export function AppShell({ children, user }: { children: React.ReactNode; user: AuthUser | null }) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -23,8 +23,8 @@ export function AppShell({ children, session }: { children: React.ReactNode; ses
             <span className="text-lg font-black tracking-tight">atsumate</span>
           </Link>
           <div className="flex items-center gap-2">
-            {session ? (
-              <AccountMenu name={session.user?.name ?? session.user?.email ?? "ログイン中"} />
+            {user ? (
+              <AccountMenu name={user.name ?? user.email ?? "ログイン中"} />
             ) : (
               <Link href="/signin" className={buttonVariants({ variant: "ghost", size: "sm" })}>
                 <LogIn className="size-4" aria-hidden="true" />

@@ -1,29 +1,35 @@
-import type { NextAuthOptions } from "next-auth";
-import KeycloakProvider from "next-auth/providers/keycloak";
+import { createSupabaseClient } from "@/lib/supabase/server";
 
-export const authOptions: NextAuthOptions = {
-  providers: [
-    KeycloakProvider({
-      clientId: process.env.KEYCLOAK_CLIENT_ID ?? "atsumate-web",
-      clientSecret: process.env.KEYCLOAK_CLIENT_SECRET ?? "not-configured",
-      issuer:
-        process.env.KEYCLOAK_ISSUER ??
-        "http://192.168.100.2:8080/realms/langgraph",
-    }),
-  ],
-  session: { strategy: "jwt" },
-  callbacks: {
-    async jwt({ token, account }) {
-      if (account?.access_token) token.accessToken = account.access_token;
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user && token.sub) session.user.id = token.sub;
-      session.accessToken = token.accessToken;
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/signin",
-  },
+export type AuthUser = {
+  id: string;
+  name: string | null;
+  email: string | null;
 };
+
+export async function getAuthenticatedUser(request?: Request): Promise<AuthUser | null> {
+  const authorization = request?.headers.get("authorization");
+  const accessToken = authorization?.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : undefined;
+  if (authorization && !accessToken) return null;
+
+  const supabase = await createSupabaseClient();
+  const { data, error } = await supabase.auth.getClaims(accessToken || undefined);
+  const claims = data?.claims;
+  const audience = Array.isArray(claims?.aud) ? claims.aud : [claims?.aud];
+  if (
+    error ||
+    !claims?.sub ||
+    claims.role !== "authenticated" ||
+    !audience.includes("authenticated")
+  ) return null;
+
+  const metadata = claims.user_metadata;
+  const name = metadata?.full_name ?? metadata?.name;
+
+  return {
+    id: claims.sub,
+    name: typeof name === "string" ? name : null,
+    email: typeof claims.email === "string" ? claims.email : null,
+  };
+}

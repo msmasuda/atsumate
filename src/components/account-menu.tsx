@@ -1,7 +1,4 @@
-"use client";
-
 import { LogOut, UserRound } from "lucide-react";
-import { signOut } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 
@@ -12,16 +9,13 @@ export function AccountMenu({ name }: { name: string }) {
         <UserRound className="size-4 shrink-0 text-indigo-600" aria-hidden="true" />
         <span className="truncate">{name}</span>
       </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => signOut({ callbackUrl: "/" })}
-      >
-        <LogOut className="size-4" aria-hidden="true" />
-        <span className="hidden sm:inline">ログアウト</span>
-        <span className="sm:hidden">終了</span>
-      </Button>
+      <form action="/auth/signout" method="post">
+        <Button type="submit" variant="ghost" size="sm">
+          <LogOut className="size-4" aria-hidden="true" />
+          <span className="hidden sm:inline">ログアウト</span>
+          <span className="sm:hidden">終了</span>
+        </Button>
+      </form>
     </div>
   );
 }
