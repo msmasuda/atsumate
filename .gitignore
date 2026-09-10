@@ -3,6 +3,7 @@ node_modules/
 next-env.d.ts
 out/
 coverage/
+*.tsbuildinfo
 src/generated/
 .env
 .env.local

@@ -1,4 +1,6 @@
-import { createSupabaseClient } from "@/lib/supabase/server";
+import { auth } from "@/auth";
+import { getPrisma } from "@/lib/db";
+import { verifyAccessToken } from "@/lib/security/mobile-tokens";
 
 export type AuthUser = {
   id: string;
@@ -8,28 +10,20 @@ export type AuthUser = {
 
 export async function getAuthenticatedUser(request?: Request): Promise<AuthUser | null> {
   const authorization = request?.headers.get("authorization");
-  const accessToken = authorization?.startsWith("Bearer ")
-    ? authorization.slice(7).trim()
-    : undefined;
-  if (authorization && !accessToken) return null;
+  if (authorization) {
+    if (!authorization.startsWith("Bearer ")) return null;
+    const claims = await verifyAccessToken(authorization.slice(7).trim());
+    if (!claims) return null;
+    return getPrisma().user.findUnique({
+      where: { id: claims.userId, authVersion: claims.authVersion },
+      select: { id: true, name: true, email: true },
+    });
+  }
 
-  const supabase = await createSupabaseClient();
-  const { data, error } = await supabase.auth.getClaims(accessToken || undefined);
-  const claims = data?.claims;
-  const audience = Array.isArray(claims?.aud) ? claims.aud : [claims?.aud];
-  if (
-    error ||
-    !claims?.sub ||
-    claims.role !== "authenticated" ||
-    !audience.includes("authenticated")
-  ) return null;
-
-  const metadata = claims.user_metadata;
-  const name = metadata?.full_name ?? metadata?.name;
-
-  return {
-    id: claims.sub,
-    name: typeof name === "string" ? name : null,
-    email: typeof claims.email === "string" ? claims.email : null,
-  };
+  const session = await auth();
+  if (!session?.user?.id || typeof session.user.authVersion !== "number") return null;
+  return getPrisma().user.findUnique({
+    where: { id: session.user.id, authVersion: session.user.authVersion },
+    select: { id: true, name: true, email: true },
+  });
 }

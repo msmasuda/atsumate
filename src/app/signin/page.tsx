@@ -5,14 +5,20 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { getAuthenticatedUser } from "@/lib/auth";
 
-import { sendMagicLink, signInWithGoogle, signInWithPassword } from "./actions";
+import { signInWithGoogle, signInWithPassword } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; registered?: string; sent?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    registered?: string;
+    reset?: string;
+    resetRequested?: string;
+    verified?: string;
+  }>;
 }) {
   if (await getAuthenticatedUser()) redirect("/");
   const params = await searchParams;
@@ -33,22 +39,36 @@ export default async function SignInPage({
             ログインを完了できませんでした。もう一度お試しください。
           </p>
         ) : null}
-        {params.sent ? (
+        {params.verified ? (
           <p className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700" role="status">
-            ログインリンクを送信しました。メールをご確認ください。
+            メールアドレスを確認しました。ログインしてください。
           </p>
         ) : null}
         {params.registered ? (
           <p className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700" role="status">
-            確認メールを送信しました。メール内のリンクから登録を完了してください。
+            確認メールを送信しました。メール内のリンクを24時間以内に開いてください。
           </p>
         ) : null}
-        <form action={signInWithGoogle}>
-          <Button type="submit" className="mt-7 w-full">Googleで続ける</Button>
-        </form>
-        <div className="my-6 flex items-center gap-3 text-xs text-slate-400" aria-hidden="true">
-          <span className="h-px flex-1 bg-slate-200" />または<span className="h-px flex-1 bg-slate-200" />
-        </div>
+        {params.resetRequested ? (
+          <p className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700" role="status">
+            登録済みの場合は、パスワード再設定メールを送信しました。
+          </p>
+        ) : null}
+        {params.reset ? (
+          <p className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700" role="status">
+            パスワードを変更しました。新しいパスワードでログインしてください。
+          </p>
+        ) : null}
+        {process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET ? (
+          <>
+            <form action={signInWithGoogle}>
+              <Button type="submit" className="mt-7 w-full">Googleで続ける</Button>
+            </form>
+            <div className="my-6 flex items-center gap-3 text-xs text-slate-400" aria-hidden="true">
+              <span className="h-px flex-1 bg-slate-200" />または<span className="h-px flex-1 bg-slate-200" />
+            </div>
+          </>
+        ) : null}
         <form action={signInWithPassword} className="space-y-3">
           <label htmlFor="password-email" className="block text-sm font-bold">メールアドレス</label>
           <input
@@ -73,21 +93,9 @@ export default async function SignInPage({
         <p className="mt-4 text-center text-sm text-slate-600">
           初めて利用する方は <Link href="/signup" className="font-bold text-indigo-600 hover:text-indigo-700">新規登録</Link>
         </p>
-        <div className="my-6 flex items-center gap-3 text-xs text-slate-400" aria-hidden="true">
-          <span className="h-px flex-1 bg-slate-200" />パスワードを使わない場合<span className="h-px flex-1 bg-slate-200" />
-        </div>
-        <form action={sendMagicLink} className="space-y-3">
-          <label htmlFor="magic-email" className="block text-sm font-bold">メールアドレス</label>
-          <input
-            id="magic-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            className="min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-          />
-          <Button type="submit" variant="secondary" className="w-full">ログインリンクを受け取る</Button>
-        </form>
+        <p className="mt-3 text-center text-sm">
+          <Link href="/forgot-password" className="font-bold text-indigo-600 hover:text-indigo-700">パスワードを忘れた方</Link>
+        </p>
         <p className="mt-5 text-center text-xs leading-5 text-slate-400">参加者はログイン不要です。幹事から届いた招待URLを開いてください。</p>
       </div>
     </main>

@@ -92,9 +92,9 @@ function formatUpdatedAt(value: Date, timeZone: string) {
   });
 }
 
-async function getOrganizerEvents(authUserId: string) {
+async function getOrganizerEvents(userId: string) {
   return getPrisma().event.findMany({
-    where: { organizer: { authUserId } },
+    where: { organizerId: userId },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,

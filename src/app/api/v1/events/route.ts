@@ -16,15 +16,8 @@ async function requireOrganizer(request: Request) {
   const user = await getAuthenticatedUser(request);
   if (!user) return null;
 
-  const db = getPrisma();
-  return db.user.upsert({
-    where: { authUserId: user.id },
-    update: { name: user.name, email: user.email },
-    create: {
-      authUserId: user.id,
-      name: user.name,
-      email: user.email,
-    },
+  return getPrisma().user.findUnique({
+    where: { id: user.id },
   });
 }
 

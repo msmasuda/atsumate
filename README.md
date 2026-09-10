@@ -1,14 +1,15 @@
 # atsumate（集まて）
 
-集まりごとの企画、日程調整、参加確認、立替管理、割り勘、精算までを一つの流れで管理するWebアプリです。幹事はSupabaseでログインし、参加者は招待URLからログインせずに参加できます。
+集まりごとの企画、日程調整、参加確認、立替管理、割り勘、精算までを一つの流れで管理するWebアプリです。幹事はWebまたは将来のFlutterアプリから同じアカウントでログインし、参加者は招待URLからログインせずに参加できます。
 
 ## 現在の実装範囲
 
 MVPの最初の縦切りを実装しています。
 
 - Next.js 16 App RouterによるレスポンシブWeb UI
-- Supabase AuthによるGoogle、メール＋パスワード、マジックリンク認証と新規登録
-- ログイン中のユーザー名表示とログアウト
+- Auth.js v5によるGoogle、メール＋パスワード認証
+- メール確認、パスワード再設定、ログアウト
+- Flutter等の外部クライアント向けBearerトークンAPI
 - イベント作成REST API（`/api/v1/events`）
 - ログイン中の幹事本人のイベント、参加者数、日程候補数、対応事項を表示するダッシュボード
 - 表示用slugと分離した、ハッシュ保存の招待トークンと招待URLコピー
@@ -18,50 +19,33 @@ MVPの最初の縦切りを実装しています。
 - atsumate専用PostgreSQL向けのPrisma接続とマイグレーション
 - Docker向けNext.jsスタンドアロンビルド
 
-ホーム画面はログイン中の幹事本人のデータだけをサーバー側で取得し、進行中・終了済みのイベント、回答期限、未承認の立替、参加者数、日程候補数を表示します。日程候補の登録・回答UIは次の実装単位です。AI店舗検索、Vision、掲示板、写真、通知は後続フェーズ、Flutterは別プロジェクトです。
+ホーム画面はログイン中の幹事本人のデータだけをサーバー側で取得します。Flutter本体は別プロジェクトで、現在は認証API契約のみ提供しています。AI店舗検索、Vision、掲示板、写真、通知は後続フェーズです。
 
 ## システム構成
 
-認証とストレージはSupabase、業務データはatsumate専用PostgreSQLで管理します。
-
 - Next.js WebとRoute HandlersはVercelへデプロイする
-- AuthとStorageはSupabaseを利用する
-- 業務データはatsumate専用PostgreSQLへ保存する
-- Prisma ORMは継続し、業務データへのアクセスとマイグレーションに使用する
-- Webと将来のFlutterアプリは同じSupabase Authのユーザーを利用する
-- 幹事のログイン方法はGoogle、メール＋パスワード、メールOTP／マジックリンクとする
-- ログイン画面と認証エラーはatsumate内のUIとして実装する
-- WebとFlutterの業務処理は `/api/v1` に集約し、APIがSupabase JWTを検証する
+- WebセッションはAuth.jsの暗号化されたHttpOnly Cookieを使用する
+- モバイルはatsumate APIが発行する短期アクセストークンとローテーション式更新トークンを使用する
+- WebとモバイルはPostgreSQLの同じ`User.id`を主体IDとして利用する
+- 業務データ、OAuthアカウント、パスワードハッシュ、更新トークンはatsumate専用PostgreSQLへ保存する
+- Prisma ORMを業務データと認証データのアクセス・マイグレーションに使用する
 - 参加者の招待URLとログイン不要のゲストトークン方式は維持する
-- 写真などのファイルはSupabase Storageへ保存する
-- WebはCookieセッション、Flutter等の外部クライアントはBearer JWTを使用する
-- APIは署名検証済みJWTの`sub`を`User.authUserId`として扱う
+- ファイル保存とリアルタイム更新の基盤は、対象機能の着手時に選定する
 
-採用理由、境界、移行手順は[アーキテクチャ決定記録](./docs/ADR-001_MANAGED_SUPABASE.md)を参照してください。
+詳細は[ADR-002](./docs/ADR-002_APPLICATION_AUTH.md)を参照してください。
 
 ## 現在の技術構成
 
 - Node.js 24以上
 - Next.js 16 / React 19 / TypeScript
 - Tailwind CSS 4
-- Supabase Auth（`@supabase/ssr`）
-- Prisma ORM / atsumate専用PostgreSQL
+- Auth.js（NextAuth）v5 / Prisma Adapter
+- Prisma ORM / PostgreSQL
 - Vitest
 
 ## セットアップ
 
-### 1. Supabaseを設定
-
-Supabase DashboardでGoogleプロバイダーとメールログインを有効にします。AuthenticationのURL設定には次を登録してください。
-
-- Site URL: `http://localhost:3000`（本番では公開URL）
-- Redirect URLs: `http://localhost:3000/auth/callback` と本番の同パス
-
-Google Cloud側のOAuthクライアントには、Supabase Dashboardに表示されるコールバックURLを登録します。メール＋パスワードの利用者は`/signup`から作成し、メール確認が有効な環境では確認メール内のリンクから登録を完了します。パスワードを使わない場合は既定のマジックリンク方式を利用できます。
-
-開発用self-hosted SupabaseのURLとPublishable Keyは`langgraph_sample/deploy/supabase`の構成と共用できます。
-
-### 2. PostgreSQLを起動
+### 1. PostgreSQLを起動
 
 `infra/postgres/compose.yaml` と `infra/postgres/.env.example` をDockgeへ登録します。既存のatsumate DBを利用する場合、この手順は不要です。
 
@@ -72,34 +56,42 @@ cp .env.example .env
 
 `.env`のパスワードを変更し、`POSTGRES_PORT`はDB接続URLと同じポートにしてください。既定値は`5433`です。
 
-### 3. Webアプリを設定
+### 2. Webアプリを設定
 
 ```bash
 npm install
 cp .env.example .env
+openssl rand -base64 33
 ```
 
-`.env`のSupabase URL、Publishable Key、DB接続URL、`GUEST_TOKEN_PEPPER`を実際の値へ変更します。DBパスワードに記号が含まれる場合はURLエンコードしてください。
+生成した別々の値を`AUTH_SECRET`、`MOBILE_TOKEN_SECRET`、`GUEST_TOKEN_PEPPER`へ設定し、`DATABASE_URL`を実際の接続先へ変更します。
 
-`localhost`以外から開発サーバーを開く場合は、ブラウザから実際にアクセスするURLとホストを設定します。たとえば `192.168.100.56` から開く場合は次のようにします。変更後は開発サーバーを再起動してください。
+Googleログインを使う場合はGoogle Cloud ConsoleでWeb OAuth Clientを作成し、次を設定します。
+
+- 承認済みJavaScript生成元: `http://localhost:3000`
+- 承認済みリダイレクトURI: `http://localhost:3000/api/auth/callback/google`
+- Client ID: `AUTH_GOOGLE_ID`
+- Client secret: `AUTH_GOOGLE_SECRET`
+
+FlutterのGoogleログインで発行されるIDトークンを受け付ける場合は、Android/iOSのClient IDを`GOOGLE_ALLOWED_CLIENT_IDS`へカンマ区切りで設定します。
+
+メール確認とパスワード再設定を送信するには、ResendのAPIキーと検証済みFromアドレスを`RESEND_API_KEY`、`AUTH_EMAIL_FROM`へ設定します。開発環境で未設定の場合は、送信内容をサーバーログへ表示します。本番環境では設定必須です。
+
+localhost以外から開発サーバーを開く場合は、ブラウザから実際にアクセスするURLとホストを設定し、Google OAuthの生成元・リダイレクトURIも同じURLへ変更します。
 
 ```dotenv
-NEXT_PUBLIC_SITE_URL=http://192.168.100.56:3000
+AUTH_URL=http://192.168.100.56:3000
 ALLOWED_DEV_ORIGINS=192.168.100.56
 ```
 
-`ALLOWED_DEV_ORIGINS`はカンマ区切りで複数指定できます。未設定の場合、Next.js開発サーバーは`localhost`以外のオリジンから届く開発用リソース要求を拒否します。`NEXT_PUBLIC_SITE_URL`とSupabaseの許可Redirect URLは、ブラウザからアクセスする実際のURLへ揃えてください。
-
-### 4. DBを初期化して起動
+### 3. DBを初期化して起動
 
 ```bash
 npm run db:deploy
 npm run dev
 ```
 
-Webアプリは `http://localhost:3000`、ヘルスチェックは `http://localhost:3000/api/v1/health` です。
-
-既存DBから移行する場合、マイグレーションは認証ID列を値を保持したまま`authUserId`へ改名します。既存利用者を引き継ぐ場合は、Supabase Authで作成したユーザーのUUIDへこの値を更新してから公開してください。
+Webアプリは`http://localhost:3000`、ヘルスチェックは`http://localhost:3000/api/v1/health`です。
 
 ## 開発コマンド
 
@@ -112,31 +104,48 @@ npm run db:studio  # Prisma Studio
 
 ## Dockerビルド
 
-ルートの`Dockerfile`はNext.jsのstandalone出力を使用します。実行時に`.env.example`記載の環境変数をコンテナへ渡してください。DBマイグレーションはアプリ起動前に `npm run db:deploy` で適用します。
+ルートの`Dockerfile`はNext.jsのstandalone出力を使用します。実行時に`.env.example`記載の環境変数をコンテナへ渡してください。DBマイグレーションはアプリ起動前に`npm run db:deploy`で適用します。
 
 ## API
 
 | Method | Path | 認証 | 用途 |
 | --- | --- | --- | --- |
 | GET | `/api/v1/health` | 不要 | 稼働確認 |
+| POST | `/api/v1/auth/register` | 不要 | メール＋パスワード登録 |
+| GET | `/api/v1/auth/verify-email` | 確認トークン | メール確認 |
+| POST / PATCH | `/api/v1/auth/password-reset` | 不要 / 再設定トークン | 再設定メール送信 / パスワード変更 |
+| POST | `/api/v1/auth/token` | パスワードまたはGoogle IDトークン | モバイルトークン発行 |
+| POST | `/api/v1/auth/token/refresh` | 更新トークン | モバイルトークン更新 |
+| DELETE | `/api/v1/auth/token` | 更新トークン | モバイルセッション失効 |
 | GET | `/api/v1/events` | 幹事 | 自分のイベント一覧 |
 | POST | `/api/v1/events` | 幹事 | イベント作成 |
 | POST | `/api/v1/invitations/:token/participants` | 招待トークン | ゲスト参加登録 |
 
-APIはFlutter等の別クライアントからも利用できるよう、`/api/v1`以下で後方互換性を維持します。WebはSupabaseのCookie、外部クライアントは`Authorization: Bearer <Supabase access token>`で認証します。
+WebはAuth.js Cookie、外部クライアントは`Authorization: Bearer <accessToken>`で`/api/v1`へアクセスします。アクセストークンの有効期間は15分、更新トークンは30日で、更新するたびにローテーションします。
+
+`POST /api/v1/auth/token`のリクエスト例:
+
+```json
+{ "grantType": "password", "email": "user@example.com", "password": "your-password" }
+```
+
+```json
+{ "grantType": "googleIdToken", "idToken": "google-id-token" }
+```
 
 ## 会計上の方針
 
 立替は参加者が申請し、幹事が承認します。精算を確定した後の再計算は既存結果を上書きせず、新しいバージョンとして保存します。
 
-現在の送金計算は、ネット残高から送金を最大 `N-1` 回に集約する方式です。一般的に回数を減らせますが、すべての入力で数学的な最小回数を保証するものではないため、「送金回数を削減」と表現します。
+現在の送金計算は、ネット残高から送金を最大`N-1`回に集約する方式です。一般的に回数を減らせますが、すべての入力で数学的な最小回数を保証するものではないため、「送金回数を削減」と表現します。
 
 ## ドキュメント
 
 - [全体仕様書・企画設計書](./docs/SPECIFICATION.md)
 - [AIエージェント詳細設計書](./docs/AI_AGENT_DESIGN.md)
 - [懸念事項・リスク分析](./docs/CONSIDERATIONS_AND_RISKS.md)
-- [ADR-001: Supabase Authへの移行](./docs/ADR-001_MANAGED_SUPABASE.md)
+- [ADR-001: Supabase Auth移行（置換済み）](./docs/ADR-001_MANAGED_SUPABASE.md)
+- [ADR-002: アプリケーション認証基盤](./docs/ADR-002_APPLICATION_AUTH.md)
 
 ## 開発フェーズ
 
