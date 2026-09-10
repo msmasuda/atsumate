@@ -37,6 +37,16 @@ export default async function SignUpPage({
           </p>
         ) : null}
         <form action={signUpWithPassword} className="mt-7 space-y-3">
+          <label htmlFor="signup-name" className="block text-sm font-bold">表示名</label>
+          <input
+            id="signup-name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            maxLength={80}
+            required
+            className="min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+          />
           <label htmlFor="signup-email" className="block text-sm font-bold">メールアドレス</label>
           <input
             id="signup-email"
@@ -52,6 +62,8 @@ export default async function SignUpPage({
             name="password"
             type="password"
             autoComplete="new-password"
+            minLength={15}
+            maxLength={128}
             required
             className="min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
           />
@@ -61,11 +73,14 @@ export default async function SignUpPage({
             name="passwordConfirmation"
             type="password"
             autoComplete="new-password"
+            minLength={15}
+            maxLength={128}
             required
             className="min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
           />
           <Button type="submit" className="w-full">新規登録</Button>
         </form>
+        <p className="mt-3 text-xs leading-5 text-slate-500">パスワードは15文字以上で設定してください。</p>
         <p className="mt-5 text-center text-xs leading-5 text-slate-400">参加者はアカウントを作成する必要はありません。</p>
       </div>
     </main>

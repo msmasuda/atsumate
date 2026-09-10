@@ -1,45 +1,47 @@
 "use server";
 
+import { AuthError } from "next-auth";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { createSupabaseClient } from "@/lib/supabase/server";
+import { signIn } from "@/auth";
+import {
+  registerWithPassword,
+  requestPasswordReset,
+  resetPassword,
+} from "@/lib/auth-service";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/lib/security/passwords";
 
-const callbackUrl = `${(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000").replace(/\/$/, "")}/auth/callback`;
+const passwordSchema = z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH);
 
 export async function signInWithGoogle() {
-  const supabase = await createSupabaseClient();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: callbackUrl },
-  });
-
-  if (error || !data.url) redirect("/signin?error=oauth");
-  redirect(data.url);
+  await signIn("google", { redirectTo: "/" });
 }
 
 export async function signInWithPassword(formData: FormData) {
   const parsed = z.object({
-    email: z.email(),
-    password: z.string().min(1),
-  }).safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
-  if (!parsed.success) redirect("/signin?error=password");
+    email: z.email().max(254),
+    password: z.string().min(1).max(PASSWORD_MAX_LENGTH),
+  }).safeParse({ email: formData.get("email"), password: formData.get("password") });
+  if (!parsed.success) redirect("/signin?error=credentials");
 
-  const supabase = await createSupabaseClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) redirect("/signin?error=password");
-  redirect("/");
+  try {
+    await signIn("credentials", { ...parsed.data, redirectTo: "/" });
+  } catch (error) {
+    if (error instanceof AuthError) redirect("/signin?error=credentials");
+    throw error;
+  }
 }
 
 export async function signUpWithPassword(formData: FormData) {
   const parsed = z.object({
-    email: z.email(),
-    password: z.string().min(1),
+    name: z.string().trim().min(1).max(80),
+    email: z.email().max(254),
+    password: passwordSchema,
     passwordConfirmation: z.string(),
   }).safeParse({
+    name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
     passwordConfirmation: formData.get("passwordConfirmation"),
@@ -49,27 +51,42 @@ export async function signUpWithPassword(formData: FormData) {
     redirect("/signup?error=confirmation");
   }
 
-  const supabase = await createSupabaseClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: { emailRedirectTo: callbackUrl },
-  });
-
-  if (error) redirect("/signup?error=signup");
-  redirect(data.session ? "/" : "/signin?registered=1");
+  try {
+    await registerWithPassword(parsed.data, await headers());
+  } catch {
+    redirect("/signup?error=signup");
+  }
+  redirect("/signin?registered=1");
 }
 
-export async function sendMagicLink(formData: FormData) {
-  const parsed = z.email().safeParse(formData.get("email"));
-  if (!parsed.success) redirect("/signin?error=email");
+export async function requestPasswordResetAction(formData: FormData) {
+  const email = z.email().max(254).safeParse(formData.get("email"));
+  if (!email.success) redirect("/forgot-password?error=input");
+  try {
+    await requestPasswordReset(email.data, await headers());
+  } catch {
+    redirect("/forgot-password?error=request");
+  }
+  redirect("/signin?resetRequested=1");
+}
 
-  const supabase = await createSupabaseClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data,
-    options: { emailRedirectTo: callbackUrl },
+export async function resetPasswordAction(formData: FormData) {
+  const parsed = z.object({
+    token: z.string().min(1),
+    password: passwordSchema,
+    passwordConfirmation: z.string(),
+  }).safeParse({
+    token: formData.get("token"),
+    password: formData.get("password"),
+    passwordConfirmation: formData.get("passwordConfirmation"),
   });
-
-  if (error) redirect("/signin?error=email");
-  redirect("/signin?sent=1");
+  if (!parsed.success || parsed.data.password !== parsed.data.passwordConfirmation) {
+    redirect(`/reset-password?token=${encodeURIComponent(String(formData.get("token") ?? ""))}&error=input`);
+  }
+  try {
+    await resetPassword(parsed.data.token, parsed.data.password);
+  } catch {
+    redirect("/reset-password?error=token");
+  }
+  redirect("/signin?reset=1");
 }

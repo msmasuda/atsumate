@@ -1,8 +1,11 @@
 # ADR-001: Vercel＋Supabase Authへの移行
 
-- 状態: 実施済み
+- 状態: ADR-002により置換済み
 - 決定日: 2026-09-07
 - 実施日: 2026-09-09
+- 置換日: 2026-09-10
+
+> Supabase Auth、Storage、Realtimeの採用は廃止しました。現行方針は[ADR-002](./ADR-002_APPLICATION_AUTH.md)を参照してください。この文書は意思決定履歴として残します。
 
 ## 背景
 
