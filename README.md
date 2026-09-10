@@ -14,7 +14,8 @@ MVPの最初の縦切りを実装しています。
 - ログイン中の幹事本人のイベント、参加者数、日程候補数、対応事項を表示するダッシュボード
 - 表示用slugと分離した、ハッシュ保存の招待トークンと招待URLコピー
 - 招待URLからのゲスト自己登録、完了表示、同一端末の重複登録防止、HttpOnly本人トークン
-- 日程候補・回答、立替承認、バージョン付き精算に対応するPrismaスキーマ
+- 幹事による日程候補の追加・削除・確定、参加者による○△×回答、回答状況の集計表示
+- 立替承認、バージョン付き精算に対応するPrismaスキーマ
 - 円単位の整数演算による送金集約ロジックと単体テスト
 - atsumate専用PostgreSQL向けのPrisma接続とマイグレーション
 - Docker向けNext.jsスタンドアロンビルド
@@ -119,7 +120,9 @@ npm run db:studio  # Prisma Studio
 | DELETE | `/api/v1/auth/token` | 更新トークン | モバイルセッション失効 |
 | GET | `/api/v1/events` | 幹事 | 自分のイベント一覧 |
 | POST | `/api/v1/events` | 幹事 | イベント作成 |
+| POST / PATCH / DELETE | `/api/v1/events/:id/date-options` | 幹事 | 日程候補の追加 / 確定 / 削除 |
 | POST | `/api/v1/invitations/:token/participants` | 招待トークン | ゲスト参加登録 |
+| PUT | `/api/v1/invitations/:token/date-votes` | 招待＋本人トークン | 日程回答の登録・更新 |
 
 WebはAuth.js Cookie、外部クライアントは`Authorization: Bearer <accessToken>`で`/api/v1`へアクセスします。アクセストークンの有効期間は15分、更新トークンは30日で、更新するたびにローテーションします。
 

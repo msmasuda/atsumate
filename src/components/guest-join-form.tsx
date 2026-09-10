@@ -1,18 +1,31 @@
 "use client";
 
-import { CheckCircle2, LoaderCircle, UserPlus } from "lucide-react";
+import { LoaderCircle, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import { GuestDateVoteForm } from "@/components/guest-date-vote-form";
 import { Button } from "@/components/ui/button";
+import type { DateVoteStatus } from "@/lib/date-votes";
 
-type ParticipantSummary = { id: string; name: string; attendance: string };
+type ParticipantSummary = {
+  id: string;
+  name: string;
+  attendance: string;
+  dateVotes: Array<{ optionId: string; status: DateVoteStatus; conditionNote: string | null }>;
+};
+type DateOption = { id: string; startAt: string; endAt: string | null; isDecided: boolean };
 
 type GuestJoinFormProps = {
   inviteToken: string;
   initialParticipant: ParticipantSummary | null;
+  eventStatus: string;
+  timeZone: string;
+  dateOptions: DateOption[];
 };
 
-export function GuestJoinForm({ inviteToken, initialParticipant }: GuestJoinFormProps) {
+export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, timeZone, dateOptions }: GuestJoinFormProps) {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [participant, setParticipant] = useState(initialParticipant);
@@ -38,6 +51,7 @@ export function GuestJoinForm({ inviteToken, initialParticipant }: GuestJoinForm
         return;
       }
       setParticipant(body.data);
+      router.refresh();
     } catch {
       setMessage("通信に失敗しました。時間をおいてもう一度お試しください。");
     } finally {
@@ -48,14 +62,14 @@ export function GuestJoinForm({ inviteToken, initialParticipant }: GuestJoinForm
 
   if (participant) {
     return (
-      <div className="mt-7 rounded-2xl border border-emerald-200 bg-emerald-50 p-6" role="status" aria-live="polite">
-        <CheckCircle2 className="size-8 text-emerald-600" aria-hidden="true" />
-        <h2 className="mt-3 text-xl font-black">参加登録が完了しました</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          {participant.name}さんとして登録しました。この端末の参加情報を保存しています。
-        </p>
-        <p className="mt-3 text-sm font-semibold text-emerald-800">この画面は閉じて大丈夫です。</p>
-      </div>
+      <GuestDateVoteForm
+        inviteToken={inviteToken}
+        participantName={participant.name}
+        eventStatus={eventStatus}
+        timeZone={timeZone}
+        options={dateOptions}
+        initialVotes={participant.dateVotes}
+      />
     );
   }
 

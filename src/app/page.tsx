@@ -374,11 +374,14 @@ export default async function Home() {
                             })}
                           </ol>
                         </div>
-                        <div className="bg-slate-50 px-5 py-4 sm:px-6">
+                        <div className="flex flex-col justify-between gap-3 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:px-6">
                           <p className="flex items-center gap-2 text-sm text-slate-600">
                             <Clock3 className="size-4" aria-hidden="true" />
                             最終更新 {formatUpdatedAt(event.updatedAt, event.timezone)}
                           </p>
+                          <Link href={`/events/${event.id}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-indigo-700 hover:text-indigo-900">
+                            日程調整を開く <ArrowRight className="size-4" aria-hidden="true" />
+                          </Link>
                         </div>
                       </Card>
                     );

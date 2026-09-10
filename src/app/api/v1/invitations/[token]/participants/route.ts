@@ -19,7 +19,12 @@ export async function POST(request: Request, context: RouteContext) {
   if (!parsed.success) return Response.json({ error: "名前を入力してください。" }, { status: 400 });
 
   const db = getPrisma();
-  const participantSelect = { id: true, name: true, attendance: true } as const;
+  const participantSelect = {
+    id: true,
+    name: true,
+    attendance: true,
+    dateVotes: { select: { optionId: true, status: true, conditionNote: true } },
+  } as const;
   const event = await db.event.findUnique({
     where: { inviteTokenHash: hashGuestToken(inviteToken) },
     select: { id: true, status: true },
