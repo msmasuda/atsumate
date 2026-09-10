@@ -55,12 +55,13 @@ graph TD
         EmailService["Resend / React Email"]
     end
 
-    subgraph "Managed Supabase (Tokyo Region)"
+    subgraph "Supabase"
         SupabaseAuth["Supabase Auth"]
-        AppDB[(Supabase PostgreSQL / atsumate DB)]
         Storage["Supabase Storage"]
         Realtime["Supabase Realtime"]
     end
+
+    AppDB[(atsumate専用 PostgreSQL)]
 
     subgraph "AI Agent Server (langgraph_sample / FastAPI:8000)"
         AgentAPI["FastAPI (/v1/conversations, /v1/vision)"]
@@ -105,7 +106,7 @@ graph TD
 | **モバイルアプリ (将来)** | Flutter (Dart) | iOS / Android の美麗なクロスプラットフォーム体験 |
 | **AIエージェント基盤** | **`langgraph_sample`** (FastAPI + LangGraph) | **自前構築済みの自律ReActエージェント & Vision API & WebSearch** |
 | **LLM / Vision** | Ollama (ローカルLLM / Vision) | プライバシー重視のローカル推論、高いコスト効率 |
-| **Webバックエンド / DB** | Next.js Route Handlers + Prisma ORM + マネージドSupabase PostgreSQL | イベント出欠・タスク・会計トランザクション管理 |
+| **Webバックエンド / DB** | Next.js Route Handlers + Prisma ORM + atsumate専用PostgreSQL | イベント出欠・タスク・会計トランザクション管理 |
 | **認証** | Supabase Auth | WebとFlutterで共通のユーザーとJWTを利用し、atsumate内にログインUIを実装 |
 | **ファイル保存** | Supabase Storage | 写真・予約画像等を署名付きURLとRLSで保護 |
 | **メール送信基盤** | **Resend + React Email** | Vercel公式推奨。Reactコンポーネントで美しいHTMLメール配信 |
@@ -537,7 +538,7 @@ export function calculateMinimalSettlements(balances: { participantId: string; n
 ## 8. 今後の開発ロードマップ
 
 1. **Step 1: Next.js + Prisma 基盤 & REST API 構築** (PostgreSQL、Prisma スキーマ適用、`/api/v1` エンドポイント)
-2. **Step 2: Vercel + マネージドSupabaseへ基盤移行** (DB移行、Supabase Auth、Googleログイン、メールOTP／マジックリンク、JWT検証)
+2. **Step 2: Supabase Authへ認証基盤移行** (Googleログイン、メール＋パスワード、メールOTP／マジックリンク、JWT検証)
 3. **Step 3: 日程調整 & 出欠・ゲスト参加モデル実装** (AI候補日生成、キーパーソン判定、投票UI)
 4. **Step 4: 自前基盤 `langgraph_sample` 連携** (WebSearchによる店選び、Vision API レシート・予約スクショ解析、SSE対話)
 5. **Step 5: コミュニケーションボード & 写真共有** (ピン留め、AIコンシェルジュ自動応答、Supabase Storageによるアルバム機能)

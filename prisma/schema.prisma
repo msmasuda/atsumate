@@ -9,13 +9,13 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  oidcSubject String   @unique
-  name        String?
-  email       String?  @unique
-  events      Event[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  authUserId String   @unique
+  name       String?
+  email      String?  @unique
+  events     Event[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Event {
@@ -33,9 +33,9 @@ model Event {
   organizerId String
   organizer   User   @relation(fields: [organizerId], references: [id], onDelete: Restrict)
 
-  dateOptions   EventDateOption[]
-  participants  Participant[]
-  expenses      Expense[]
+  dateOptions    EventDateOption[]
+  participants   Participant[]
+  expenses       Expense[]
   settlementRuns SettlementRun[]
 
   createdAt DateTime @default(now())
@@ -54,22 +54,22 @@ enum EventStatus {
 }
 
 model EventDateOption {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   startAt   DateTime
   endAt     DateTime?
-  isDecided Boolean  @default(false)
+  isDecided Boolean    @default(false)
   votes     DateVote[]
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
 
   @@unique([eventId, startAt])
   @@index([eventId, isDecided])
 }
 
 model Participant {
-  id                 String           @id @default(cuid())
-  eventId            String
+  id                  String           @id @default(cuid())
+  eventId             String
   event               Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name                String
   email               String?
@@ -81,12 +81,12 @@ model Participant {
   splitWeightBasis    Int              @default(1000)
   revokedAt           DateTime?
 
-  dateVotes         DateVote[]
-  expensesSubmitted Expense[]         @relation("ExpenseSubmitter")
-  expensesPaid      Expense[]         @relation("ExpensePayer")
-  expenseSplits     ExpenseSplit[]
-  settlementsToPay Settlement[]        @relation("SettlementPayer")
-  settlementsToReceive Settlement[]    @relation("SettlementPayee")
+  dateVotes            DateVote[]
+  expensesSubmitted    Expense[]      @relation("ExpenseSubmitter")
+  expensesPaid         Expense[]      @relation("ExpensePayer")
+  expenseSplits        ExpenseSplit[]
+  settlementsToPay     Settlement[]   @relation("SettlementPayer")
+  settlementsToReceive Settlement[]   @relation("SettlementPayee")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -122,23 +122,23 @@ enum VoteStatus {
 }
 
 model Expense {
-  id          String         @id @default(cuid())
-  eventId     String
-  event       Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  title       String
-  amount      Int
-  status      ExpenseStatus  @default(SUBMITTED)
-  submittedById String
-  submittedBy Participant    @relation("ExpenseSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
-  paidById    String
-  paidBy      Participant    @relation("ExpensePayer", fields: [paidById], references: [id], onDelete: Restrict)
-  approvedById String?
-  approvedAt  DateTime?
-  rejectedAt  DateTime?
+  id              String         @id @default(cuid())
+  eventId         String
+  event           Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  title           String
+  amount          Int
+  status          ExpenseStatus  @default(SUBMITTED)
+  submittedById   String
+  submittedBy     Participant    @relation("ExpenseSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  paidById        String
+  paidBy          Participant    @relation("ExpensePayer", fields: [paidById], references: [id], onDelete: Restrict)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
   rejectionReason String?
-  splits      ExpenseSplit[]
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  splits          ExpenseSplit[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([eventId, status])
 }

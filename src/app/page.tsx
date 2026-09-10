@@ -9,14 +9,13 @@ import {
   LogIn,
   Users,
 } from "lucide-react";
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 
 import { AppShell } from "@/components/app-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { EventStatus } from "@/generated/prisma/client";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -93,9 +92,9 @@ function formatUpdatedAt(value: Date, timeZone: string) {
   });
 }
 
-async function getOrganizerEvents(oidcSubject: string) {
+async function getOrganizerEvents(authUserId: string) {
   return getPrisma().event.findMany({
-    where: { organizer: { oidcSubject } },
+    where: { organizer: { authUserId } },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -118,8 +117,8 @@ async function getOrganizerEvents(oidcSubject: string) {
 }
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
-  const events = session?.user.id ? await getOrganizerEvents(session.user.id) : [];
+  const user = await getAuthenticatedUser();
+  const events = user ? await getOrganizerEvents(user.id) : [];
   const activeEvents = events.filter(
     (event) => event.status !== "COMPLETED" && event.status !== "CANCELLED",
   );
@@ -173,7 +172,7 @@ export default async function Home() {
   })} ${formatDate(renderedAt, "Asia/Tokyo", { weekday: "long" })}`;
 
   return (
-    <AppShell session={session}>
+    <AppShell user={user}>
       <div className="flex flex-col gap-7">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
@@ -191,7 +190,7 @@ export default async function Home() {
           </Link>
         </div>
 
-        {!session ? (
+        {!user ? (
           <Card className="p-6 sm:p-8">
             <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
               <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-indigo-100 text-indigo-700">

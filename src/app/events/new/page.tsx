@@ -1,17 +1,15 @@
 import { ArrowLeft } from "lucide-react";
-import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { EventCreateForm } from "@/components/event-create-form";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export const metadata = { title: "新しい集まり" };
 export const dynamic = "force-dynamic";
 
 export default async function NewEventPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/signin");
+  if (!(await getAuthenticatedUser())) redirect("/signin");
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8 sm:py-12">

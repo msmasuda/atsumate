@@ -1,7 +1,6 @@
-import { getServerSession } from "next-auth";
 import { z } from "zod";
 
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/db";
 import { createOpaqueToken, hashGuestToken } from "@/lib/security/tokens";
 
@@ -13,24 +12,24 @@ const createEventSchema = z.object({
   responseDueAt: z.iso.datetime().optional(),
 });
 
-async function requireOrganizer() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user.id) return null;
+async function requireOrganizer(request: Request) {
+  const user = await getAuthenticatedUser(request);
+  if (!user) return null;
 
   const db = getPrisma();
   return db.user.upsert({
-    where: { oidcSubject: session.user.id },
-    update: { name: session.user.name, email: session.user.email },
+    where: { authUserId: user.id },
+    update: { name: user.name, email: user.email },
     create: {
-      oidcSubject: session.user.id,
-      name: session.user.name,
-      email: session.user.email,
+      authUserId: user.id,
+      name: user.name,
+      email: user.email,
     },
   });
 }
 
-export async function GET() {
-  const organizer = await requireOrganizer();
+export async function GET(request: Request) {
+  const organizer = await requireOrganizer(request);
   if (!organizer) return Response.json({ error: "認証が必要です。" }, { status: 401 });
 
   const events = await getPrisma().event.findMany({
@@ -42,7 +41,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const organizer = await requireOrganizer();
+  const organizer = await requireOrganizer(request);
   if (!organizer) return Response.json({ error: "認証が必要です。" }, { status: 401 });
 
   const parsed = createEventSchema.safeParse(await request.json().catch(() => null));
