@@ -1,4 +1,4 @@
-import { ArrowLeft, CalendarDays, CircleDollarSign, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleDollarSign, Store, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { AccountingManager } from "@/components/accounting-manager";
 import { DateOptionManager } from "@/components/date-option-manager";
 import { Card } from "@/components/ui/card";
+import { VenueOptionManager } from "@/components/venue-option-manager";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/db";
 
@@ -29,7 +30,23 @@ export default async function EventPage({ params }: PageProps) {
       participants: {
         where: { revokedAt: null },
         orderBy: { createdAt: "asc" },
-        select: { id: true, name: true, isKeyPerson: true, attendance: true },
+        select: { id: true, name: true, isKeyPerson: true, attendance: true, dietaryRequirements: true },
+      },
+      venueOptions: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          courseTitle: true,
+          pricePerPerson: true,
+          features: true,
+          recommendation: true,
+          isDecided: true,
+          votes: {
+            select: { participantId: true, participant: { select: { name: true } } },
+          },
+        },
       },
       dateOptions: {
         orderBy: { startAt: "asc" },
@@ -120,6 +137,19 @@ export default async function EventPage({ params }: PageProps) {
               endAt: option.endAt?.toISOString() ?? null,
             }))}
           />
+        </Card>
+
+        <Card className="mt-7 p-5 sm:p-7">
+          <div className="mb-5 flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-violet-100 text-violet-700">
+              <Store className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="text-xl font-black">店舗候補と投票状況</h2>
+              <p className="mt-1 text-sm text-slate-500">AIで候補を探し、参加者の投票を見て開催店舗を決定します。</p>
+            </div>
+          </div>
+          <VenueOptionManager eventId={event.id} eventStatus={event.status} venues={event.venueOptions} />
         </Card>
 
         <Card className="mt-7 p-5 sm:p-7">

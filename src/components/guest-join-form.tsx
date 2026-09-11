@@ -12,6 +12,7 @@ type ParticipantSummary = {
   id: string;
   name: string;
   attendance: string;
+  venueVotes: Array<{ venueId: string }>;
   dateVotes: Array<{ optionId: string; status: DateVoteStatus; conditionNote: string | null }>;
   expensesSubmitted: Array<{
     id: string;
@@ -34,6 +35,17 @@ type ParticipantSummary = {
   }>;
 };
 type DateOption = { id: string; startAt: string; endAt: string | null; isDecided: boolean };
+type Venue = {
+  id: string;
+  name: string;
+  url: string | null;
+  courseTitle: string | null;
+  pricePerPerson: number | null;
+  features: string | null;
+  recommendation: string | null;
+  isDecided: boolean;
+  voteCount: number;
+};
 
 type GuestJoinFormProps = {
   inviteToken: string;
@@ -41,9 +53,10 @@ type GuestJoinFormProps = {
   eventStatus: string;
   timeZone: string;
   dateOptions: DateOption[];
+  venues: Venue[];
 };
 
-export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, timeZone, dateOptions }: GuestJoinFormProps) {
+export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, timeZone, dateOptions, venues }: GuestJoinFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -63,7 +76,11 @@ export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, ti
       const response = await fetch(`/api/v1/invitations/${inviteToken}/participants`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: data.get("name"), email: data.get("email") || undefined }),
+        body: JSON.stringify({
+          name: data.get("name"),
+          email: data.get("email") || undefined,
+          dietaryRequirements: data.get("dietaryRequirements") || undefined,
+        }),
       });
       const body = (await response.json()) as { data?: ParticipantSummary; error?: string };
       if (!response.ok || !body.data) {
@@ -103,6 +120,8 @@ export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, ti
           status: settlement.status,
           participantName: settlement.from.name,
         }))}
+        venues={venues}
+        initialVenueId={participant.venueVotes[0]?.venueId ?? null}
       />
     );
   }
@@ -116,6 +135,10 @@ export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, ti
       <div>
         <label htmlFor="email" className="block text-sm font-bold">メールアドレス <span className="font-normal text-slate-400">（任意）</span></label>
         <input id="email" name="email" type="email" autoComplete="email" className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 text-base outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="reminder@example.com" />
+      </div>
+      <div>
+        <label htmlFor="dietaryRequirements" className="block text-sm font-bold">食事の要望 <span className="font-normal text-slate-400">（任意）</span></label>
+        <textarea id="dietaryRequirements" name="dietaryRequirements" maxLength={300} rows={3} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="例：甲殻類アレルギー、完全禁煙を希望" />
       </div>
       {message ? <p className="rounded-xl bg-slate-100 p-3 text-sm font-semibold" role="status">{message}</p> : null}
       <Button type="submit" disabled={isSubmitting} className="w-full">

@@ -18,12 +18,13 @@ MVPの最初の縦切りを実装しています。
 - 日程確定後の参加可否回答、参加者による立替申請、幹事による承認・却下
 - 参加予定者での等分精算、バージョン付き再計算、支払報告と入金確認
 - `langgraph_sample`による日程候補のAI提案
+- `langgraph_sample`のWeb検索による店舗候補のAI提案、候補保存、参加者投票、店舗決定
 - 立替承認、バージョン付き精算に対応するPrismaスキーマ
 - 円単位の整数演算による送金集約ロジックと単体テスト
 - atsumate専用PostgreSQL向けのPrisma接続とマイグレーション
 - Docker向けNext.jsスタンドアロンビルド
 
-ホーム画面はログイン中の幹事本人のデータだけをサーバー側で取得します。Flutter本体は別プロジェクトで、現在は認証API契約のみ提供しています。AI店舗検索、Vision、掲示板、写真、通知は後続フェーズです。
+ホーム画面はログイン中の幹事本人のデータだけをサーバー側で取得します。Flutter本体は別プロジェクトで、現在は認証API契約のみ提供しています。Vision、掲示板、写真、通知は後続フェーズです。
 
 ## システム構成
 
@@ -70,7 +71,7 @@ openssl rand -base64 33
 
 生成した別々の値を`AUTH_SECRET`、`MOBILE_TOKEN_SECRET`、`GUEST_TOKEN_PEPPER`へ設定し、`DATABASE_URL`を実際の接続先へ変更します。
 
-AIによる日程候補を使う場合は`langgraph_sample`を起動し、`AGENT_API_URL`へAPIのURLを設定します。ローカルの`AUTH_MODE=disabled`では`AGENT_API_TOKEN`は空欄のまま利用できます。
+AIによる日程・店舗候補を使う場合は`langgraph_sample`を起動し、`AGENT_API_URL`へAPIのURLを設定します。ローカルの`AUTH_MODE=disabled`では`AGENT_API_TOKEN`は空欄のまま利用できます。店舗候補の提案には同エージェントの`web_search`を使用し、現在は検索結果ページを参考候補として表示します。店舗の詳細はリンク先で確認してください。
 
 Googleログインを使う場合はGoogle Cloud ConsoleでWeb OAuth Clientを作成し、次を設定します。
 
@@ -127,8 +128,11 @@ npm run db:studio  # Prisma Studio
 | POST | `/api/v1/events` | 幹事 | イベント作成 |
 | POST / PATCH / DELETE | `/api/v1/events/:id/date-options` | 幹事 | 日程候補の追加 / 確定 / 削除 |
 | POST | `/api/v1/events/:id/date-suggestions` | 幹事 | AIによる日程候補の提案 |
+| POST / PATCH / DELETE | `/api/v1/events/:id/venue-options` | 幹事 | 店舗候補の追加 / 決定 / 削除 |
+| POST | `/api/v1/events/:id/venue-suggestions` | 幹事 | Web検索を使ったAI店舗候補の提案 |
 | POST | `/api/v1/invitations/:token/participants` | 招待トークン | ゲスト参加登録 |
 | PUT | `/api/v1/invitations/:token/date-votes` | 招待＋本人トークン | 日程回答の登録・更新 |
+| PUT | `/api/v1/invitations/:token/venue-votes` | 招待＋本人トークン | 店舗投票の登録・変更 |
 | PUT | `/api/v1/invitations/:token/attendance` | 招待＋本人トークン | 確定日への参加可否回答 |
 | POST | `/api/v1/invitations/:token/expenses` | 招待＋本人トークン | 立替申請 |
 | PATCH | `/api/v1/invitations/:token/settlements` | 招待＋本人トークン | 支払い済み報告 |

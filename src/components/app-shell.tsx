@@ -60,7 +60,7 @@ export function AppShell({ children, user }: { children: React.ReactNode; user: 
           <div className="mt-10 rounded-2xl bg-slate-900 p-4 text-white">
             <p className="text-xs font-bold text-indigo-300">MVP</p>
             <p className="mt-2 text-sm font-bold">企画から精算まで、まず一本につなげます。</p>
-            <p className="mt-2 text-xs leading-5 text-slate-400">AI副幹事は次のフェーズで接続予定です。</p>
+            <p className="mt-2 text-xs leading-5 text-slate-400">AI副幹事に日程や店舗の候補を提案してもらえます。</p>
           </div>
         </aside>
         <main className="min-w-0 px-4 py-7 sm:px-6 lg:px-8 lg:py-10">{children}</main>

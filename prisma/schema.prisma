@@ -117,6 +117,7 @@ model Event {
   organizer   User   @relation(fields: [organizerId], references: [id], onDelete: Restrict)
 
   dateOptions    EventDateOption[]
+  venueOptions   VenueOption[]
   participants   Participant[]
   expenses       Expense[]
   settlementRuns SettlementRun[]
@@ -165,6 +166,7 @@ model Participant {
   revokedAt           DateTime?
 
   dateVotes            DateVote[]
+  venueVotes           VenueVote[]
   expensesSubmitted    Expense[]      @relation("ExpenseSubmitter")
   expensesPaid         Expense[]      @relation("ExpensePayer")
   expenseSplits        ExpenseSplit[]
@@ -202,6 +204,35 @@ enum VoteStatus {
   ATTENDING
   CONDITIONAL
   DECLINED
+}
+
+model VenueOption {
+  id             String      @id @default(cuid())
+  eventId        String
+  event          Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name           String
+  url            String?
+  courseTitle    String?
+  pricePerPerson Int?
+  features       String?     @db.Text
+  recommendation String?     @db.Text
+  isDecided      Boolean     @default(false)
+  votes          VenueVote[]
+  createdAt      DateTime    @default(now())
+
+  @@index([eventId, isDecided])
+}
+
+model VenueVote {
+  id            String      @id @default(cuid())
+  venueId       String
+  venue         VenueOption @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@unique([venueId, participantId])
+  @@index([participantId])
 }
 
 model Expense {
