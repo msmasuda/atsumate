@@ -6,8 +6,8 @@ import { getPrisma } from "@/lib/db";
 export const runtime = "nodejs";
 
 const createSchema = z.object({
-  startAt: z.iso.datetime(),
-  endAt: z.iso.datetime().optional(),
+  startAt: z.iso.datetime({ offset: true }),
+  endAt: z.iso.datetime({ offset: true }).optional(),
 });
 const optionSchema = z.object({ optionId: z.string().min(1) });
 

@@ -17,6 +17,7 @@ MVPの最初の縦切りを実装しています。
 - 幹事による日程候補の追加・削除・確定、参加者による○△×回答、回答状況の集計表示
 - 日程確定後の参加可否回答、参加者による立替申請、幹事による承認・却下
 - 参加予定者での等分精算、バージョン付き再計算、支払報告と入金確認
+- `langgraph_sample`による日程候補のAI提案
 - 立替承認、バージョン付き精算に対応するPrismaスキーマ
 - 円単位の整数演算による送金集約ロジックと単体テスト
 - atsumate専用PostgreSQL向けのPrisma接続とマイグレーション
@@ -68,6 +69,8 @@ openssl rand -base64 33
 ```
 
 生成した別々の値を`AUTH_SECRET`、`MOBILE_TOKEN_SECRET`、`GUEST_TOKEN_PEPPER`へ設定し、`DATABASE_URL`を実際の接続先へ変更します。
+
+AIによる日程候補を使う場合は`langgraph_sample`を起動し、`AGENT_API_URL`へAPIのURLを設定します。ローカルの`AUTH_MODE=disabled`では`AGENT_API_TOKEN`は空欄のまま利用できます。
 
 Googleログインを使う場合はGoogle Cloud ConsoleでWeb OAuth Clientを作成し、次を設定します。
 
@@ -123,6 +126,7 @@ npm run db:studio  # Prisma Studio
 | GET | `/api/v1/events` | 幹事 | 自分のイベント一覧 |
 | POST | `/api/v1/events` | 幹事 | イベント作成 |
 | POST / PATCH / DELETE | `/api/v1/events/:id/date-options` | 幹事 | 日程候補の追加 / 確定 / 削除 |
+| POST | `/api/v1/events/:id/date-suggestions` | 幹事 | AIによる日程候補の提案 |
 | POST | `/api/v1/invitations/:token/participants` | 招待トークン | ゲスト参加登録 |
 | PUT | `/api/v1/invitations/:token/date-votes` | 招待＋本人トークン | 日程回答の登録・更新 |
 | PUT | `/api/v1/invitations/:token/attendance` | 招待＋本人トークン | 確定日への参加可否回答 |
