@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheck, CalendarPlus, LoaderCircle, Star, Trash2 } from "lucide-react";
+import { CalendarCheck, CalendarPlus, LoaderCircle, Sparkles, Star, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -20,6 +20,7 @@ type DateOption = {
     participant: Participant;
   }>;
 };
+type DateSuggestion = { startAt: string; endAt?: string; reason: string };
 
 type DateOptionManagerProps = {
   eventId: string;
@@ -56,6 +57,7 @@ export function DateOptionManager({
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<DateSuggestion[]>([]);
   const planning = eventStatus === "PLANNING";
 
   async function request(method: "POST" | "PATCH" | "DELETE", body: object, pendingKey: string) {
@@ -99,6 +101,39 @@ export function DateOptionManager({
     if (created) formElement.reset();
   }
 
+  async function handleSuggest(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setPending("suggest");
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/v1/events/${eventId}/date-suggestions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request: form.get("dateRequest") }),
+      });
+      const result = (await response.json()) as { data?: DateSuggestion[]; error?: string };
+      if (!response.ok || !result.data) {
+        setMessage(result.error ?? "AIから日程候補を取得できませんでした。");
+        return;
+      }
+      setSuggestions(result.data);
+    } catch {
+      setMessage("通信に失敗しました。時間をおいてもう一度お試しください。");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function handleAddSuggestion(suggestion: DateSuggestion) {
+    const created = await request(
+      "POST",
+      { startAt: suggestion.startAt, endAt: suggestion.endAt },
+      `suggestion-${suggestion.startAt}`,
+    );
+    if (created) setSuggestions((current) => current.filter((item) => item.startAt !== suggestion.startAt));
+  }
+
   async function handleDelete(optionId: string) {
     if (!window.confirm("この候補日と参加者の回答を削除しますか？")) return;
     await request("DELETE", { optionId }, `delete-${optionId}`);
@@ -112,22 +147,57 @@ export function DateOptionManager({
   return (
     <div className="space-y-5">
       {planning ? (
-        <form onSubmit={handleCreate} className="grid gap-4 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="startAt" className="block text-sm font-bold">開始日時</label>
-            <input id="startAt" name="startAt" type="datetime-local" required className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3" />
-          </div>
-          <div>
-            <label htmlFor="endAt" className="block text-sm font-bold">終了日時 <span className="font-normal text-slate-400">（任意）</span></label>
-            <input id="endAt" name="endAt" type="datetime-local" className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3" />
-          </div>
-          <div className="sm:col-span-2">
-            <Button type="submit" disabled={pending !== null}>
-              {pending === "create" ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <CalendarPlus className="size-4" aria-hidden="true" />}
-              候補日を追加
-            </Button>
-          </div>
-        </form>
+        <div className="space-y-4">
+          <form onSubmit={handleSuggest} className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+            <label htmlFor="dateRequest" className="flex items-center gap-2 text-sm font-black text-indigo-900">
+              <Sparkles className="size-4" aria-hidden="true" /> AIに候補日を提案してもらう
+            </label>
+            <p className="mt-1 text-xs text-indigo-700">提案には30秒以上かかる場合があります。</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input id="dateRequest" name="dateRequest" required maxLength={500} className="min-h-11 min-w-0 flex-1 rounded-xl border border-indigo-200 bg-white px-3" placeholder="例：来月の金曜か土曜、19時から2時間" />
+              <Button type="submit" disabled={pending !== null}>
+                {pending === "suggest" ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Sparkles className="size-4" aria-hidden="true" />}
+                {pending === "suggest" ? "提案中…" : "AIに提案を依頼"}
+              </Button>
+            </div>
+          </form>
+
+          {suggestions.length > 0 ? (
+            <div className="space-y-2 rounded-2xl border border-indigo-200 p-4">
+              <h3 className="font-black">AIからの提案</h3>
+              {suggestions.map((suggestion) => (
+                <div key={suggestion.startAt} className="flex flex-col justify-between gap-3 rounded-xl bg-slate-50 p-3 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="font-bold">{formatDateTime(suggestion.startAt, timeZone)}</p>
+                    {suggestion.endAt ? <p className="text-xs text-slate-500">終了 {formatDateTime(suggestion.endAt, timeZone)}</p> : null}
+                    <p className="mt-1 text-sm text-slate-600">{suggestion.reason}</p>
+                  </div>
+                  <Button type="button" size="sm" variant="secondary" disabled={pending !== null} onClick={() => void handleAddSuggestion(suggestion)}>
+                    {pending === `suggestion-${suggestion.startAt}` ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <CalendarPlus className="size-4" aria-hidden="true" />}
+                    候補日に追加
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <form onSubmit={handleCreate} className="grid gap-4 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="startAt" className="block text-sm font-bold">開始日時</label>
+              <input id="startAt" name="startAt" type="datetime-local" required className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3" />
+            </div>
+            <div>
+              <label htmlFor="endAt" className="block text-sm font-bold">終了日時 <span className="font-normal text-slate-400">（任意）</span></label>
+              <input id="endAt" name="endAt" type="datetime-local" className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3" />
+            </div>
+            <div className="sm:col-span-2">
+              <Button type="submit" disabled={pending !== null}>
+                {pending === "create" ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <CalendarPlus className="size-4" aria-hidden="true" />}
+                候補日を追加
+              </Button>
+            </div>
+          </form>
+        </div>
       ) : null}
 
       {message ? <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700" role="alert">{message}</p> : null}
