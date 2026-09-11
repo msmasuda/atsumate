@@ -15,6 +15,8 @@ MVPの最初の縦切りを実装しています。
 - 表示用slugと分離した、ハッシュ保存の招待トークンと招待URLコピー
 - 招待URLからのゲスト自己登録、完了表示、同一端末の重複登録防止、HttpOnly本人トークン
 - 幹事による日程候補の追加・削除・確定、参加者による○△×回答、回答状況の集計表示
+- 日程確定後の参加可否回答、参加者による立替申請、幹事による承認・却下
+- 参加予定者での等分精算、バージョン付き再計算、支払報告と入金確認
 - 立替承認、バージョン付き精算に対応するPrismaスキーマ
 - 円単位の整数演算による送金集約ロジックと単体テスト
 - atsumate専用PostgreSQL向けのPrisma接続とマイグレーション
@@ -123,6 +125,11 @@ npm run db:studio  # Prisma Studio
 | POST / PATCH / DELETE | `/api/v1/events/:id/date-options` | 幹事 | 日程候補の追加 / 確定 / 削除 |
 | POST | `/api/v1/invitations/:token/participants` | 招待トークン | ゲスト参加登録 |
 | PUT | `/api/v1/invitations/:token/date-votes` | 招待＋本人トークン | 日程回答の登録・更新 |
+| PUT | `/api/v1/invitations/:token/attendance` | 招待＋本人トークン | 確定日への参加可否回答 |
+| POST | `/api/v1/invitations/:token/expenses` | 招待＋本人トークン | 立替申請 |
+| PATCH | `/api/v1/invitations/:token/settlements` | 招待＋本人トークン | 支払い済み報告 |
+| PATCH | `/api/v1/events/:id/expenses` | 幹事 | 立替申請の承認・却下 |
+| POST / PATCH | `/api/v1/events/:id/settlements` | 幹事 | 精算の確定・入金確認 |
 
 WebはAuth.js Cookie、外部クライアントは`Authorization: Bearer <accessToken>`で`/api/v1`へアクセスします。アクセストークンの有効期間は15分、更新トークンは30日で、更新するたびにローテーションします。
 
@@ -138,7 +145,7 @@ WebはAuth.js Cookie、外部クライアントは`Authorization: Bearer <access
 
 ## 会計上の方針
 
-立替は参加者が申請し、幹事が承認します。精算を確定した後の再計算は既存結果を上書きせず、新しいバージョンとして保存します。
+立替は参加予定の参加者が申請し、幹事が承認します。現在の精算は参加予定者で等分し、割り切れない1円単位の端数は参加登録順に割り当てます。精算を確定した後の再計算は既存結果を上書きせず、新しいバージョンとして保存します。
 
 現在の送金計算は、ネット残高から送金を最大`N-1`回に集約する方式です。一般的に回数を減らせますが、すべての入力で数学的な最小回数を保証するものではないため、「送金回数を削減」と表現します。
 

@@ -13,6 +13,25 @@ type ParticipantSummary = {
   name: string;
   attendance: string;
   dateVotes: Array<{ optionId: string; status: DateVoteStatus; conditionNote: string | null }>;
+  expensesSubmitted: Array<{
+    id: string;
+    title: string;
+    amount: number;
+    status: string;
+    rejectionReason: string | null;
+  }>;
+  settlementsToPay: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    to: { name: string };
+  }>;
+  settlementsToReceive: Array<{
+    id: string;
+    amount: number;
+    status: string;
+    from: { name: string };
+  }>;
 };
 type DateOption = { id: string; startAt: string; endAt: string | null; isDecided: boolean };
 
@@ -28,8 +47,9 @@ export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, ti
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [participant, setParticipant] = useState(initialParticipant);
+  const [registeredParticipant, setRegisteredParticipant] = useState<ParticipantSummary | null>(null);
   const submittingRef = useRef(false);
+  const participant = initialParticipant ?? registeredParticipant;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,7 +70,7 @@ export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, ti
         setMessage(body.error ?? "登録できませんでした。");
         return;
       }
-      setParticipant(body.data);
+      setRegisteredParticipant(body.data);
       router.refresh();
     } catch {
       setMessage("通信に失敗しました。時間をおいてもう一度お試しください。");
@@ -69,6 +89,20 @@ export function GuestJoinForm({ inviteToken, initialParticipant, eventStatus, ti
         timeZone={timeZone}
         options={dateOptions}
         initialVotes={participant.dateVotes}
+        initialAttendance={participant.attendance}
+        expenses={participant.expensesSubmitted}
+        settlementsToPay={participant.settlementsToPay.map((settlement) => ({
+          id: settlement.id,
+          amount: settlement.amount,
+          status: settlement.status,
+          participantName: settlement.to.name,
+        }))}
+        settlementsToReceive={participant.settlementsToReceive.map((settlement) => ({
+          id: settlement.id,
+          amount: settlement.amount,
+          status: settlement.status,
+          participantName: settlement.from.name,
+        }))}
       />
     );
   }

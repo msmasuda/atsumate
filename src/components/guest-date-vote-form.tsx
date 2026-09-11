@@ -4,6 +4,7 @@ import { CalendarCheck, CheckCircle2, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { GuestEventManager } from "@/components/guest-event-manager";
 import type { DateVoteStatus } from "@/lib/date-votes";
 
 type DateOption = {
@@ -13,6 +14,8 @@ type DateOption = {
   isDecided: boolean;
 };
 type Vote = { optionId: string; status: DateVoteStatus; conditionNote: string | null };
+type Expense = { id: string; title: string; amount: number; status: string; rejectionReason: string | null };
+type Settlement = { id: string; amount: number; status: string; participantName: string };
 
 type GuestDateVoteFormProps = {
   inviteToken: string;
@@ -21,6 +24,10 @@ type GuestDateVoteFormProps = {
   timeZone: string;
   options: DateOption[];
   initialVotes: Vote[];
+  initialAttendance: string;
+  expenses: Expense[];
+  settlementsToPay: Settlement[];
+  settlementsToReceive: Settlement[];
 };
 
 function formatDateTime(value: string, timeZone: string) {
@@ -47,6 +54,10 @@ export function GuestDateVoteForm({
   timeZone,
   options,
   initialVotes,
+  initialAttendance,
+  expenses,
+  settlementsToPay,
+  settlementsToReceive,
 }: GuestDateVoteFormProps) {
   const [statuses, setStatuses] = useState<Record<string, DateVoteStatus>>(() =>
     Object.fromEntries(initialVotes.map((vote) => [vote.optionId, vote.status])),
@@ -154,6 +165,16 @@ export function GuestDateVoteForm({
           </Button>
         </form>
       )}
+      {eventStatus !== "PLANNING" ? (
+        <GuestEventManager
+          inviteToken={inviteToken}
+          eventStatus={eventStatus}
+          initialAttendance={initialAttendance}
+          expenses={expenses}
+          settlementsToPay={settlementsToPay}
+          settlementsToReceive={settlementsToReceive}
+        />
+      ) : null}
     </div>
   );
 }

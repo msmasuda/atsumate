@@ -27,7 +27,7 @@ export default async function InvitePage({ params }: PageProps) {
       _count: { select: { participants: true } },
     },
   });
-  if (!event || event.status === "CANCELLED" || event.status === "COMPLETED") notFound();
+  if (!event || event.status === "CANCELLED") notFound();
 
   const cookieStore = await cookies();
   const guestToken = cookieStore.get(`atsumate_guest_${event.id}`)?.value;
@@ -43,9 +43,22 @@ export default async function InvitePage({ params }: PageProps) {
           name: true,
           attendance: true,
           dateVotes: { select: { optionId: true, status: true, conditionNote: true } },
+          expensesSubmitted: {
+            orderBy: { createdAt: "desc" },
+            select: { id: true, title: true, amount: true, status: true, rejectionReason: true },
+          },
+          settlementsToPay: {
+            where: { settlementRun: { status: "FINALIZED" } },
+            select: { id: true, amount: true, status: true, to: { select: { name: true } } },
+          },
+          settlementsToReceive: {
+            where: { settlementRun: { status: "FINALIZED" } },
+            select: { id: true, amount: true, status: true, from: { select: { name: true } } },
+          },
         },
       })
     : null;
+  if (["SETTLING", "COMPLETED"].includes(event.status) && !participant) notFound();
 
   return (
     <main className="grid min-h-screen place-items-center bg-slate-50 px-4 py-10">

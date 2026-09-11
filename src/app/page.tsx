@@ -380,7 +380,7 @@ export default async function Home() {
                             最終更新 {formatUpdatedAt(event.updatedAt, event.timezone)}
                           </p>
                           <Link href={`/events/${event.id}`} className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-indigo-700 hover:text-indigo-900">
-                            日程調整を開く <ArrowRight className="size-4" aria-hidden="true" />
+                            イベント管理を開く <ArrowRight className="size-4" aria-hidden="true" />
                           </Link>
                         </div>
                       </Card>
@@ -445,10 +445,15 @@ export default async function Home() {
                           </span>
                           <h3 className="mt-2 font-black">{event.title}</h3>
                         </div>
-                        <p className="text-sm text-slate-500">
-                          参加者 {event._count.participants}名・最終更新{" "}
-                          {formatUpdatedAt(event.updatedAt, event.timezone)}
-                        </p>
+                        <div className="flex items-center gap-4">
+                          <p className="text-sm text-slate-500">
+                            参加者 {event._count.participants}名・最終更新{" "}
+                            {formatUpdatedAt(event.updatedAt, event.timezone)}
+                          </p>
+                          <Link href={`/events/${event.id}`} className="inline-flex min-h-11 items-center gap-1 text-sm font-bold text-indigo-700">
+                            開く <ArrowRight className="size-4" aria-hidden="true" />
+                          </Link>
+                        </div>
                       </div>
                     );
                   })}
