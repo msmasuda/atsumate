@@ -19,12 +19,29 @@ export async function POST(request: Request, context: RouteContext) {
   if (!parsed.success) return Response.json({ error: "名前を入力してください。" }, { status: 400 });
 
   const db = getPrisma();
-  const participantSelect = { id: true, name: true, attendance: true } as const;
+  const participantSelect = {
+    id: true,
+    name: true,
+    attendance: true,
+    dateVotes: { select: { optionId: true, status: true, conditionNote: true } },
+    expensesSubmitted: {
+      orderBy: { createdAt: "desc" as const },
+      select: { id: true, title: true, amount: true, status: true, rejectionReason: true },
+    },
+    settlementsToPay: {
+      where: { settlementRun: { status: "FINALIZED" as const } },
+      select: { id: true, amount: true, status: true, to: { select: { name: true } } },
+    },
+    settlementsToReceive: {
+      where: { settlementRun: { status: "FINALIZED" as const } },
+      select: { id: true, amount: true, status: true, from: { select: { name: true } } },
+    },
+  } as const;
   const event = await db.event.findUnique({
     where: { inviteTokenHash: hashGuestToken(inviteToken) },
     select: { id: true, status: true },
   });
-  if (!event || event.status === "CANCELLED" || event.status === "COMPLETED") {
+  if (!event || !["PLANNING", "CONFIRMED", "IN_PROGRESS"].includes(event.status)) {
     return Response.json({ error: "この招待は利用できません。" }, { status: 404 });
   }
 

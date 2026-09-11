@@ -1,10 +1,12 @@
 "use client";
 
 import { CalendarPlus, CheckCircle2, Copy, LoaderCircle } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { copyText } from "@/lib/client/copy-text";
+import { cn } from "@/lib/utils";
 
 type CreateResult = { data: { id: string; title: string }; inviteUrl: string };
 type CopyStatus = "idle" | "copied" | "error";
@@ -71,6 +73,10 @@ export function EventCreateForm() {
             コピーできませんでした。URLを選択してコピーしてください。
           </p>
         ) : null}
+        <Link href={`/events/${result.data.id}`} className={cn(buttonVariants(), "mt-5")}>
+          日程候補を設定する
+          <CalendarPlus className="size-4" aria-hidden="true" />
+        </Link>
       </div>
     );
   }
