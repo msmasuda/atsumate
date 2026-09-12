@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { GuestEventManager } from "@/components/guest-event-manager";
+import { GuestVenueVoteForm } from "@/components/guest-venue-vote-form";
 import type { DateVoteStatus } from "@/lib/date-votes";
 
 type DateOption = {
@@ -16,6 +17,17 @@ type DateOption = {
 type Vote = { optionId: string; status: DateVoteStatus; conditionNote: string | null };
 type Expense = { id: string; title: string; amount: number; status: string; rejectionReason: string | null };
 type Settlement = { id: string; amount: number; status: string; participantName: string };
+type Venue = {
+  id: string;
+  name: string;
+  url: string | null;
+  courseTitle: string | null;
+  pricePerPerson: number | null;
+  features: string | null;
+  recommendation: string | null;
+  isDecided: boolean;
+  voteCount: number;
+};
 
 type GuestDateVoteFormProps = {
   inviteToken: string;
@@ -28,6 +40,8 @@ type GuestDateVoteFormProps = {
   expenses: Expense[];
   settlementsToPay: Settlement[];
   settlementsToReceive: Settlement[];
+  venues: Venue[];
+  initialVenueId: string | null;
 };
 
 function formatDateTime(value: string, timeZone: string) {
@@ -58,6 +72,8 @@ export function GuestDateVoteForm({
   expenses,
   settlementsToPay,
   settlementsToReceive,
+  venues,
+  initialVenueId,
 }: GuestDateVoteFormProps) {
   const [statuses, setStatuses] = useState<Record<string, DateVoteStatus>>(() =>
     Object.fromEntries(initialVotes.map((vote) => [vote.optionId, vote.status])),
@@ -165,6 +181,7 @@ export function GuestDateVoteForm({
           </Button>
         </form>
       )}
+      {venues.length > 0 ? <GuestVenueVoteForm inviteToken={inviteToken} eventStatus={eventStatus} venues={venues} initialVenueId={initialVenueId} /> : null}
       {eventStatus !== "PLANNING" ? (
         <GuestEventManager
           inviteToken={inviteToken}

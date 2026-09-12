@@ -5,7 +5,7 @@ import { requestAgentDateSuggestions } from "@/lib/agent-date-suggestions";
 import { getPrisma } from "@/lib/db";
 
 export const runtime = "nodejs";
-export const maxDuration = 180;
+export const maxDuration = 200;
 
 const requestSchema = z.object({ request: z.string().trim().min(1).max(500) });
 

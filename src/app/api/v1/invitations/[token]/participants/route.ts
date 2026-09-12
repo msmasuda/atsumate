@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 const joinSchema = z.object({
   name: z.string().trim().min(1).max(80),
   email: z.email().optional(),
+  dietaryRequirements: z.string().trim().min(1).max(300).optional(),
 });
 
 type RouteContext = { params: Promise<{ token: string }> };
@@ -23,6 +24,7 @@ export async function POST(request: Request, context: RouteContext) {
     id: true,
     name: true,
     attendance: true,
+    venueVotes: { select: { venueId: true } },
     dateVotes: { select: { optionId: true, status: true, conditionNote: true } },
     expensesSubmitted: {
       orderBy: { createdAt: "desc" as const },
@@ -68,6 +70,7 @@ export async function POST(request: Request, context: RouteContext) {
       eventId: event.id,
       name: parsed.data.name,
       email: parsed.data.email,
+      dietaryRequirements: parsed.data.dietaryRequirements,
       guestTokenHash: hashGuestToken(guestToken),
     },
     select: participantSelect,

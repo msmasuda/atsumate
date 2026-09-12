@@ -24,6 +24,20 @@ export default async function InvitePage({ params }: PageProps) {
         orderBy: { startAt: "asc" },
         select: { id: true, startAt: true, endAt: true, isDecided: true },
       },
+      venueOptions: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          courseTitle: true,
+          pricePerPerson: true,
+          features: true,
+          recommendation: true,
+          isDecided: true,
+          _count: { select: { votes: true } },
+        },
+      },
       _count: { select: { participants: true } },
     },
   });
@@ -42,6 +56,7 @@ export default async function InvitePage({ params }: PageProps) {
           id: true,
           name: true,
           attendance: true,
+          venueVotes: { select: { venueId: true } },
           dateVotes: { select: { optionId: true, status: true, conditionNote: true } },
           expensesSubmitted: {
             orderBy: { createdAt: "desc" },
@@ -91,6 +106,7 @@ export default async function InvitePage({ params }: PageProps) {
             startAt: option.startAt.toISOString(),
             endAt: option.endAt?.toISOString() ?? null,
           }))}
+          venues={event.venueOptions.map(({ _count, ...venue }) => ({ ...venue, voteCount: _count.votes }))}
         />
       </div>
     </main>
