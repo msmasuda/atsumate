@@ -28,7 +28,8 @@ MVPの最初の縦切りを実装しています。
 
 ## システム構成
 
-- Next.js WebとRoute HandlersはVercelへデプロイする
+- 本番はatsumate専用のConoHa VPSにDocker Compose（Caddy、Next.js、PostgreSQL）で構築する（リリース判定後）
+- AIは`langgraph_sample`のAPIを呼ぶ。開発時は`192.168.100.2`の検証環境、本番は`https://agent.my-style.jp`を使う
 - WebセッションはAuth.jsの暗号化されたHttpOnly Cookieを使用する
 - モバイルはatsumate APIが発行する短期アクセストークンとローテーション式更新トークンを使用する
 - WebとモバイルはPostgreSQLの同じ`User.id`を主体IDとして利用する
@@ -37,7 +38,7 @@ MVPの最初の縦切りを実装しています。
 - 参加者の招待URLとログイン不要のゲストトークン方式は維持する
 - ファイル保存とリアルタイム更新の基盤は、対象機能の着手時に選定する
 
-詳細は[ADR-002](./docs/ADR-002_APPLICATION_AUTH.md)を参照してください。
+詳細は[ADR-002](./docs/ADR-002_APPLICATION_AUTH.md)、[ADR-003](./docs/ADR-003_PRODUCTION_HOSTING.md)を参照してください。
 
 ## 現在の技術構成
 
@@ -71,7 +72,7 @@ openssl rand -base64 33
 
 生成した別々の値を`AUTH_SECRET`、`MOBILE_TOKEN_SECRET`、`GUEST_TOKEN_PEPPER`へ設定し、`DATABASE_URL`を実際の接続先へ変更します。
 
-AIによる日程・店舗候補を使う場合は`langgraph_sample`を起動し、`AGENT_API_URL`へAPIのURLを設定します。ローカルの`AUTH_MODE=disabled`では`AGENT_API_TOKEN`は空欄のまま利用できます。店舗候補の提案には同エージェントの`web_search`を使用し、現在は検索結果ページを参考候補として表示します。店舗の詳細はリンク先で確認してください。
+AIによる日程・店舗候補を使う場合は、`192.168.100.2`の`langgraph_sample`検証環境のAPI URLを`AGENT_API_URL`へ設定します。ローカルの`AUTH_MODE=disabled`では`AGENT_API_TOKEN`は空欄のまま利用できます。店舗候補の提案には同エージェントの`web_search`を使用し、現在は検索結果ページを参考候補として表示します。店舗の詳細はリンク先で確認してください。
 
 Googleログインを使う場合はGoogle Cloud ConsoleでWeb OAuth Clientを作成し、次を設定します。
 
@@ -164,6 +165,7 @@ WebはAuth.js Cookie、外部クライアントは`Authorization: Bearer <access
 - [懸念事項・リスク分析](./docs/CONSIDERATIONS_AND_RISKS.md)
 - [ADR-001: Supabase Auth移行（置換済み）](./docs/ADR-001_MANAGED_SUPABASE.md)
 - [ADR-002: アプリケーション認証基盤](./docs/ADR-002_APPLICATION_AUTH.md)
+- [ADR-003: 本番ホスティングと開発環境](./docs/ADR-003_PRODUCTION_HOSTING.md)
 
 ## 開発フェーズ
 
