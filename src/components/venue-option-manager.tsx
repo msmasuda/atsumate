@@ -23,13 +23,14 @@ type VenueOptionManagerProps = {
   eventId: string;
   eventStatus: string;
   venues: Venue[];
+  aiEnabled: boolean;
 };
 
 function yen(amount: number) {
   return `${amount.toLocaleString("ja-JP")}円`;
 }
 
-export function VenueOptionManager({ eventId, eventStatus, venues }: VenueOptionManagerProps) {
+export function VenueOptionManager({ eventId, eventStatus, venues, aiEnabled }: VenueOptionManagerProps) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -89,6 +90,15 @@ export function VenueOptionManager({ eventId, eventStatus, venues }: VenueOption
     if (created) setSuggestions((current) => current.filter((item) => item.name !== suggestion.name));
   }
 
+  async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const url = String(form.get("venueUrl") ?? "").trim();
+    const created = await request("POST", { name: form.get("venueName"), url: url || undefined }, "create");
+    if (created) formElement.reset();
+  }
+
   async function handleDecide(optionId: string) {
     if (!window.confirm("この店舗を開催場所として決定しますか？")) return;
     await request("PATCH", { optionId }, `decide-${optionId}`);
@@ -123,7 +133,7 @@ export function VenueOptionManager({ eventId, eventStatus, venues }: VenueOption
 
   return (
     <div className="space-y-5">
-      {canManage ? (
+      {canManage && aiEnabled ? (
         <form onSubmit={handleSuggest} className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
           <label htmlFor="venueRequest" className="flex items-center gap-2 text-sm font-black text-violet-900">
             <Sparkles className="size-4" aria-hidden="true" /> AIに店舗を探してもらう
@@ -152,6 +162,25 @@ export function VenueOptionManager({ eventId, eventStatus, venues }: VenueOption
             </div>
           ))}
         </div>
+      ) : null}
+
+      {canManage ? (
+        <form onSubmit={handleCreate} className="grid gap-4 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="venueName" className="block text-sm font-bold">店名</label>
+            <input id="venueName" name="venueName" required maxLength={120} className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3" />
+          </div>
+          <div>
+            <label htmlFor="venueUrl" className="block text-sm font-bold">URL <span className="font-normal text-slate-400">（任意）</span></label>
+            <input id="venueUrl" name="venueUrl" type="url" maxLength={2048} className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3" placeholder="https://" />
+          </div>
+          <div className="sm:col-span-2">
+            <Button type="submit" disabled={pending !== null}>
+              {pending === "create" ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Store className="size-4" aria-hidden="true" />}
+              店舗候補を追加
+            </Button>
+          </div>
+        </form>
       ) : null}
 
       {message ? <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700" role="alert">{message}</p> : null}

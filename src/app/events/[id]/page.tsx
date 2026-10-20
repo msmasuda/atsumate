@@ -98,6 +98,7 @@ export default async function EventPage({ params }: PageProps) {
     },
   });
   if (!event) notFound();
+  const aiEnabled = Boolean(process.env.AGENT_API_URL);
 
   return (
     <AppShell user={user}>
@@ -136,6 +137,7 @@ export default async function EventPage({ params }: PageProps) {
               startAt: option.startAt.toISOString(),
               endAt: option.endAt?.toISOString() ?? null,
             }))}
+            aiEnabled={aiEnabled}
           />
         </Card>
 
@@ -146,10 +148,10 @@ export default async function EventPage({ params }: PageProps) {
             </span>
             <div>
               <h2 className="text-xl font-black">店舗候補と投票状況</h2>
-              <p className="mt-1 text-sm text-slate-500">AIで候補を探し、参加者の投票を見て開催店舗を決定します。</p>
+              <p className="mt-1 text-sm text-slate-500">{aiEnabled ? "AIで" : ""}候補を探し、参加者の投票を見て開催店舗を決定します。</p>
             </div>
           </div>
-          <VenueOptionManager eventId={event.id} eventStatus={event.status} venues={event.venueOptions} />
+          <VenueOptionManager eventId={event.id} eventStatus={event.status} venues={event.venueOptions} aiEnabled={aiEnabled} />
         </Card>
 
         <Card className="mt-7 p-5 sm:p-7">
