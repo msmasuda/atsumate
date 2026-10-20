@@ -28,6 +28,7 @@ type DateOptionManagerProps = {
   timeZone: string;
   participants: Participant[];
   options: DateOption[];
+  aiEnabled: boolean;
 };
 
 function formatDateTime(value: string, timeZone: string) {
@@ -53,6 +54,7 @@ export function DateOptionManager({
   timeZone,
   participants,
   options,
+  aiEnabled,
 }: DateOptionManagerProps) {
   const router = useRouter();
   const [pending, setPending] = useState<string | null>(null);
@@ -148,7 +150,7 @@ export function DateOptionManager({
     <div className="space-y-5">
       {planning ? (
         <div className="space-y-4">
-          <form onSubmit={handleSuggest} className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+          {aiEnabled ? <form onSubmit={handleSuggest} className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
             <label htmlFor="dateRequest" className="flex items-center gap-2 text-sm font-black text-indigo-900">
               <Sparkles className="size-4" aria-hidden="true" /> AIに候補日を提案してもらう
             </label>
@@ -160,7 +162,7 @@ export function DateOptionManager({
                 {pending === "suggest" ? "提案中…" : "AIに提案を依頼"}
               </Button>
             </div>
-          </form>
+          </form> : null}
 
           {suggestions.length > 0 ? (
             <div className="space-y-2 rounded-2xl border border-indigo-200 p-4">
