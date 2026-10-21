@@ -54,7 +54,8 @@ export async function requestAgentMessage(title: string, prompt: string) {
     const messageResponse = await fetch(`${baseUrl}/v1/conversations/${conversation.id}/messages`, {
       method: "POST",
       headers: { ...headers, "Idempotency-Key": crypto.randomUUID() },
-      body: JSON.stringify({ content: prompt }),
+      // 日程提案はツール不要。ツールのループで応答が遅れたり崩れたりするのを防ぐ
+      body: JSON.stringify({ content: prompt, tools: "none" }),
       signal: AbortSignal.timeout(190_000),
     });
     if (!messageResponse.ok) throw new Error(`エージェントから回答を取得できませんでした（${messageResponse.status}）。`);

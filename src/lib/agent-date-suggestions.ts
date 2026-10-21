@@ -45,13 +45,12 @@ export async function requestAgentDateSuggestions(input: {
     `現在日時は${now.toISOString()}、イベント名は「${input.eventTitle}」、タイムゾーンは${input.timeZone}です。`,
     `日程の希望: ${input.request}`,
     `今日からの日付と曜日: ${buildDateCalendar(now, input.timeZone)}`,
-    "Web検索や計算などのツールは使わず、与えられた情報だけで回答してください。",
     "希望に合う現実的な候補を3件提案してください。説明文やMarkdownを付けず、",
     '[{"startAt":"タイムゾーンオフセット付きISO 8601","endAt":"タイムゾーンオフセット付きISO 8601","reason":"短い理由"}]',
     "形式のJSON配列だけを返してください。終了日時を判断できない場合はendAtを省略してください。",
   ].join("\n");
 
-  // ponytail: エージェントの応答がぶれるため1回だけ再試行。langgraph_sample#37 が直れば外せる
+  // ponytail: JSONの形式崩れや一時的なエラーに備えて1回だけ再試行。失敗が続くなら原因を調べる
   try {
     return parseAgentDateSuggestions(await requestAgentMessage(`${input.eventTitle}の日程候補`, prompt));
   } catch (error) {
