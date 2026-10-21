@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { parseAgentDateSuggestions } from "./agent-date-suggestions";
+import { buildDateCalendar, parseAgentDateSuggestions } from "./agent-date-suggestions";
+
+describe("buildDateCalendar", () => {
+  it("タイムゾーンの日付から曜日付きの一覧を作る", () => {
+    // UTCでは10/20だが東京では10/21(水)
+    expect(buildDateCalendar(new Date("2026-10-20T16:00:00Z"), "Asia/Tokyo", 3)).toBe(
+      "2026-10-21(水) 2026-10-22(木) 2026-10-23(金)",
+    );
+  });
+
+  it("月をまたいでも曜日がずれない", () => {
+    expect(buildDateCalendar(new Date("2026-10-21T03:00:00Z"), "Asia/Tokyo", 90)).toContain("2026-12-04(金)");
+  });
+});
 
 describe("parseAgentDateSuggestions", () => {
   it("Markdownを含む応答から候補を取り出す", () => {
